@@ -161,15 +161,18 @@ function withSlug(config2) {
   const { resolveInput } = config2.hooks ?? {};
   config2.hooks = {
     ...config2.hooks,
-    resolveInput(args) {
-      args.resolvedData = resolveInput?.(args) ?? args.resolvedData;
-      if (args.inputData.slug === "" || !args.item?.slug) {
-        args.resolvedData.slug = args.resolvedData.name || args.item?.name || args.resolvedData.title || args.item?.title || "";
+    resolveInput(parameters) {
+      parameters.resolvedData = resolveInput?.(parameters) ?? parameters.resolvedData;
+      const { resolvedData, inputData, item } = parameters;
+      let slug = "";
+      if (inputData.slug === "" || !item?.slug) {
+        slug = resolvedData.name || item?.name || resolvedData.title || item?.title || "";
       }
-      if (args.resolvedData.slug) {
-        args.resolvedData.slug = (0, import_transliteration.slugify)(args.resolvedData.slug);
+      if (slug) {
+        slug = (0, import_transliteration.slugify)(slug);
       }
-      return args.resolvedData;
+      resolvedData.slug = slug;
+      return resolvedData;
     }
   };
   return config2;
@@ -319,22 +322,24 @@ var lists = {
 
 // config/storage.ts
 var import_mkdirp = __toESM(require("mkdirp"));
-import_mkdirp.default.sync("public/images");
+var storagePath = "public/images";
+import_mkdirp.default.sync(storagePath);
+var host = (process.env.ASSET_BASE_URL ?? "") || "http://localhost:3000";
 var storage = {
   myLocal: {
     kind: "local",
     type: "image",
-    generateUrl: (path) => `http://localhost:3000/images${path}`,
+    generateUrl: (path) => `${host}/images${path}`,
     serverRoute: {
       path: "/images"
     },
-    storagePath: "public/images"
+    storagePath
   }
 };
 
 // keystone.ts
 var provider = "sqlite";
-var url = process.env.DATABASE_URL || "file:./keystone.db";
+var url = (process.env.DATABASE_URL ?? "") || "file:./keystone.db";
 if (url.startsWith("postgres:")) {
   provider = "postgresql";
 }
