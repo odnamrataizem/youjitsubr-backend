@@ -7,6 +7,7 @@ import {
   relationship,
   password,
   timestamp,
+  checkbox,
 } from '@keystone-6/core/fields';
 
 import { createdAt, picture, rich, updatedAt, withSlug } from './fields';
@@ -68,6 +69,7 @@ export const lists: Lists = {
         }),
         content: rich,
         cover: picture,
+        sticky: checkbox(),
         authors: relationship({
           ref: 'User.posts',
           many: true,
