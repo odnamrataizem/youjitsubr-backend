@@ -80,7 +80,13 @@ input StringFilter {
   contains: String
   startsWith: String
   endsWith: String
+  mode: QueryMode
   not: NestedStringFilter
+}
+
+enum QueryMode {
+  default
+  insensitive
 }
 
 input NestedStringFilter {
@@ -180,6 +186,7 @@ type Post {
   lead: String
   content: Post_content_Document
   cover: ImageFieldOutput
+  sticky: Boolean
   authors(where: UserWhereInput! = {}, orderBy: [UserOrderByInput!]! = [], take: Int, skip: Int! = 0): [User!]
   authorsCount(where: UserWhereInput! = {}): Int
   category: Category
@@ -207,12 +214,18 @@ input PostWhereInput {
   title: StringFilter
   slug: StringFilter
   lead: StringFilter
+  sticky: BooleanFilter
   authors: UserManyRelationFilter
   category: CategoryWhereInput
   tags: TagManyRelationFilter
   createdAt: DateTimeFilter
   updatedAt: DateTimeFilter
   publishedAt: DateTimeNullableFilter
+}
+
+input BooleanFilter {
+  equals: Boolean
+  not: BooleanFilter
 }
 
 input UserManyRelationFilter {
@@ -243,6 +256,7 @@ input PostOrderByInput {
   title: OrderDirection
   slug: OrderDirection
   lead: OrderDirection
+  sticky: OrderDirection
   createdAt: OrderDirection
   updatedAt: OrderDirection
   publishedAt: OrderDirection
@@ -254,6 +268,7 @@ input PostUpdateInput {
   lead: String
   content: JSON
   cover: ImageFieldInput
+  sticky: Boolean
   authors: UserRelateToManyForUpdateInput
   category: CategoryRelateToOneForUpdateInput
   tags: TagRelateToManyForUpdateInput
@@ -293,6 +308,7 @@ input PostCreateInput {
   lead: String
   content: JSON
   cover: ImageFieldInput
+  sticky: Boolean
   authors: UserRelateToManyForCreateInput
   category: CategoryRelateToOneForCreateInput
   tags: TagRelateToManyForCreateInput
@@ -576,11 +592,6 @@ enum KeystoneAdminUIFieldMetaItemViewFieldMode {
 enum KeystoneAdminUIFieldMetaItemViewFieldPosition {
   form
   sidebar
-}
-
-enum QueryMode {
-  default
-  insensitive
 }
 
 type KeystoneAdminUIFieldGroupMeta {

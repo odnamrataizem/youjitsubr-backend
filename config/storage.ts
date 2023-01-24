@@ -1,8 +1,8 @@
 import type { StorageConfig } from '@keystone-6/core/types';
-import mkdirp from 'mkdirp';
+import { mkdirpSync } from 'mkdirp';
 
 const storagePath = 'public/images';
-mkdirp.sync(storagePath);
+mkdirpSync(storagePath);
 
 const host = (process.env.ASSET_BASE_URL ?? '') || 'http://localhost:3000';
 

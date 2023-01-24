@@ -62,7 +62,6 @@ var session = (0, import_session.statelessSessions)({
 var import_core = require("@keystone-6/core");
 var import_access2 = require("@keystone-6/core/access");
 var import_fields2 = require("@keystone-6/core/fields");
-var import_fields3 = require("@keystone-6/core/fields");
 
 // config/fields.ts
 var import_access = require("@keystone-6/core/access");
@@ -185,26 +184,26 @@ var lists = {
     (0, import_core.list)({
       access: import_access2.allowAll,
       fields: {
-        name: (0, import_fields3.text)({
+        name: (0, import_fields2.text)({
           validation: {
             isRequired: true
           }
         }),
         description: rich,
         picture,
-        email: (0, import_fields3.text)({
+        email: (0, import_fields2.text)({
           validation: {
             isRequired: true
           },
           isIndexed: "unique"
         }),
-        password: (0, import_fields3.password)({
+        password: (0, import_fields2.password)({
           validation: {
             isRequired: true,
             rejectCommon: true
           }
         }),
-        posts: (0, import_fields3.relationship)({
+        posts: (0, import_fields2.relationship)({
           ref: "Post.authors",
           many: true,
           ui: {
@@ -224,12 +223,12 @@ var lists = {
     (0, import_core.list)({
       access: import_access2.allowAll,
       fields: {
-        title: (0, import_fields3.text)({
+        title: (0, import_fields2.text)({
           validation: {
             isRequired: true
           }
         }),
-        lead: (0, import_fields3.text)({
+        lead: (0, import_fields2.text)({
           validation: {
             isRequired: true
           }
@@ -237,14 +236,14 @@ var lists = {
         content: rich,
         cover: picture,
         sticky: (0, import_fields2.checkbox)(),
-        authors: (0, import_fields3.relationship)({
+        authors: (0, import_fields2.relationship)({
           ref: "User.posts",
           many: true
         }),
-        category: (0, import_fields3.relationship)({
+        category: (0, import_fields2.relationship)({
           ref: "Category.posts"
         }),
-        tags: (0, import_fields3.relationship)({
+        tags: (0, import_fields2.relationship)({
           ref: "Tag.posts",
           many: true,
           ui: {
@@ -262,7 +261,7 @@ var lists = {
         }),
         createdAt,
         updatedAt,
-        publishedAt: (0, import_fields3.timestamp)({
+        publishedAt: (0, import_fields2.timestamp)({
           defaultValue: {
             kind: "now"
           },
@@ -280,12 +279,12 @@ var lists = {
         isHidden: true
       },
       fields: {
-        name: (0, import_fields3.text)({
+        name: (0, import_fields2.text)({
           validation: {
             isRequired: true
           }
         }),
-        posts: (0, import_fields3.relationship)({
+        posts: (0, import_fields2.relationship)({
           ref: "Post.tags",
           many: true
         }),
@@ -297,14 +296,14 @@ var lists = {
     (0, import_core.list)({
       access: import_access2.allowAll,
       fields: {
-        name: (0, import_fields3.text)({
+        name: (0, import_fields2.text)({
           validation: {
             isRequired: true
           }
         }),
         description: rich,
         cover: picture,
-        posts: (0, import_fields3.relationship)({
+        posts: (0, import_fields2.relationship)({
           ref: "Post.category",
           many: true,
           ui: {
@@ -323,9 +322,9 @@ var lists = {
 };
 
 // config/storage.ts
-var import_mkdirp = __toESM(require("mkdirp"));
+var import_mkdirp = require("mkdirp");
 var storagePath = "public/images";
-import_mkdirp.default.sync(storagePath);
+(0, import_mkdirp.mkdirpSync)(storagePath);
 var host = (process.env.ASSET_BASE_URL ?? "") || "http://localhost:3000";
 var storage = {
   myLocal: {
