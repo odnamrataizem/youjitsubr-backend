@@ -235,6 +235,7 @@ var lists = {
         }),
         content: rich,
         cover: picture,
+        sticky: (0, import_fields2.checkbox)(),
         kind: (0, import_fields2.select)({
           validation: {
             isRequired: true

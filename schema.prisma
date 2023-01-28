@@ -39,8 +39,8 @@ model Post {
   cover_width     Int?
   cover_height    Int?
   cover_id        String?
-  kind            PostKindType @default(POST)
   sticky          Boolean      @default(false)
+  kind            PostKindType @default(POST)
   authors         User[]       @relation("Post_authors")
   category        Category?    @relation("Post_category", fields: [categoryId], references: [id])
   categoryId      String?      @map("category")
