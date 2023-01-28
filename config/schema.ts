@@ -8,6 +8,7 @@ import {
   password,
   timestamp,
   checkbox,
+  select,
 } from '@keystone-6/core/fields';
 
 import { createdAt, picture, rich, updatedAt, withSlug } from './fields';
@@ -70,6 +71,26 @@ export const lists: Lists = {
         content: rich,
         cover: picture,
         sticky: checkbox(),
+        kind: select({
+          validation: {
+            isRequired: true,
+          },
+          type: 'enum',
+          options: [
+            {
+              label: 'Post',
+              value: 'POST',
+            },
+            {
+              label: 'Page',
+              value: 'PAGE',
+            },
+          ],
+          defaultValue: 'POST',
+          ui: {
+            displayMode: 'segmented-control',
+          },
+        }),
         authors: relationship({
           ref: 'User.posts',
           many: true,

@@ -186,6 +186,7 @@ type Post {
   lead: String
   content: Post_content_Document
   cover: ImageFieldOutput
+  kind: PostKindType
   sticky: Boolean
   authors(where: UserWhereInput! = {}, orderBy: [UserOrderByInput!]! = [], take: Int, skip: Int! = 0): [User!]
   authorsCount(where: UserWhereInput! = {}): Int
@@ -201,6 +202,11 @@ type Post_content_Document {
   document(hydrateRelationships: Boolean! = false): JSON!
 }
 
+enum PostKindType {
+  POST
+  PAGE
+}
+
 input PostWhereUniqueInput {
   id: ID
   slug: String
@@ -214,6 +220,7 @@ input PostWhereInput {
   title: StringFilter
   slug: StringFilter
   lead: StringFilter
+  kind: PostKindTypeNullableFilter
   sticky: BooleanFilter
   authors: UserManyRelationFilter
   category: CategoryWhereInput
@@ -221,6 +228,13 @@ input PostWhereInput {
   createdAt: DateTimeFilter
   updatedAt: DateTimeFilter
   publishedAt: DateTimeNullableFilter
+}
+
+input PostKindTypeNullableFilter {
+  equals: PostKindType
+  in: [PostKindType!]
+  notIn: [PostKindType!]
+  not: PostKindTypeNullableFilter
 }
 
 input BooleanFilter {
@@ -256,6 +270,7 @@ input PostOrderByInput {
   title: OrderDirection
   slug: OrderDirection
   lead: OrderDirection
+  kind: OrderDirection
   sticky: OrderDirection
   createdAt: OrderDirection
   updatedAt: OrderDirection
@@ -268,6 +283,7 @@ input PostUpdateInput {
   lead: String
   content: JSON
   cover: ImageFieldInput
+  kind: PostKindType
   sticky: Boolean
   authors: UserRelateToManyForUpdateInput
   category: CategoryRelateToOneForUpdateInput
@@ -308,6 +324,7 @@ input PostCreateInput {
   lead: String
   content: JSON
   cover: ImageFieldInput
+  kind: PostKindType
   sticky: Boolean
   authors: UserRelateToManyForCreateInput
   category: CategoryRelateToOneForCreateInput

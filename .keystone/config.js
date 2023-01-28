@@ -235,7 +235,26 @@ var lists = {
         }),
         content: rich,
         cover: picture,
-        sticky: (0, import_fields2.checkbox)(),
+        kind: (0, import_fields2.select)({
+          validation: {
+            isRequired: true
+          },
+          type: "enum",
+          options: [
+            {
+              label: "Post",
+              value: "POST"
+            },
+            {
+              label: "Page",
+              value: "PAGE"
+            }
+          ],
+          defaultValue: "POST",
+          ui: {
+            displayMode: "segmented-control"
+          }
+        }),
         authors: (0, import_fields2.relationship)({
           ref: "User.posts",
           many: true
