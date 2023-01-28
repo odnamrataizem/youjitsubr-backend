@@ -129,10 +129,9 @@ export function withSlug<
 
       if (slug) {
         slug = slugify(slug);
+        // @ts-expect-error - `resolvedData.slug` isn't defined yet
+        resolvedData.slug = slug;
       }
-
-      // @ts-expect-error - `resolvedData.slug` isn't defined yet
-      resolvedData.slug = slug;
 
       return resolvedData;
     },

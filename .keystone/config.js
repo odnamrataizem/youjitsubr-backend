@@ -170,8 +170,8 @@ function withSlug(config2) {
       }
       if (slug) {
         slug = (0, import_transliteration.slugify)(slug);
+        resolvedData.slug = slug;
       }
-      resolvedData.slug = slug;
       return resolvedData;
     }
   };
