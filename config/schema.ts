@@ -3,12 +3,12 @@ import type { Lists } from '.keystone/types';
 import { list } from '@keystone-6/core';
 import { allowAll } from '@keystone-6/core/access';
 import {
-  text,
-  relationship,
-  password,
-  timestamp,
   checkbox,
-  select,
+  integer,
+  password,
+  relationship,
+  text,
+  timestamp,
 } from '@keystone-6/core/fields';
 
 import { createdAt, picture, rich, updatedAt, withSlug } from './fields';
@@ -67,7 +67,27 @@ export const lists: Lists = {
       },
     }),
   ),
-
+  Page: withSlug(
+    list({
+      access: allowAll,
+      fields: {
+        title: text({
+          validation: {
+            isRequired: true,
+          },
+        }),
+        content: rich,
+        cover: picture,
+        weight: integer({
+          validation: {
+            isRequired: true,
+          },
+        }),
+        createdAt,
+        updatedAt,
+      },
+    }),
+  ),
   Post: withSlug(
     list({
       access: allowAll,
@@ -79,10 +99,6 @@ export const lists: Lists = {
           context,
           addValidationError,
         }) {
-          if (resolvedData.kind === 'PAGE') {
-            return;
-          }
-
           if (!resolvedData.cover.id) {
             addValidationError('Missing required field: cover');
           }
@@ -158,26 +174,6 @@ export const lists: Lists = {
         content: rich,
         cover: picture,
         sticky: checkbox(),
-        kind: select({
-          validation: {
-            isRequired: true,
-          },
-          type: 'enum',
-          options: [
-            {
-              label: 'Post',
-              value: 'POST',
-            },
-            {
-              label: 'Page',
-              value: 'PAGE',
-            },
-          ],
-          defaultValue: 'POST',
-          ui: {
-            displayMode: 'segmented-control',
-          },
-        }),
         authors: relationship({
           ref: 'User.posts',
           many: true,

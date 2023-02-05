@@ -226,6 +226,27 @@ var lists = {
       }
     })
   ),
+  Page: withSlug(
+    (0, import_core.list)({
+      access: import_access2.allowAll,
+      fields: {
+        title: (0, import_fields2.text)({
+          validation: {
+            isRequired: true
+          }
+        }),
+        content: rich,
+        cover: picture,
+        weight: (0, import_fields2.integer)({
+          validation: {
+            isRequired: true
+          }
+        }),
+        createdAt,
+        updatedAt
+      }
+    })
+  ),
   Post: withSlug(
     (0, import_core.list)({
       access: import_access2.allowAll,
@@ -237,9 +258,6 @@ var lists = {
           context,
           addValidationError
         }) {
-          if (resolvedData.kind === "PAGE") {
-            return;
-          }
           if (!resolvedData.cover.id) {
             addValidationError("Missing required field: cover");
           }
@@ -294,26 +312,6 @@ var lists = {
         content: rich,
         cover: picture,
         sticky: (0, import_fields2.checkbox)(),
-        kind: (0, import_fields2.select)({
-          validation: {
-            isRequired: true
-          },
-          type: "enum",
-          options: [
-            {
-              label: "Post",
-              value: "POST"
-            },
-            {
-              label: "Page",
-              value: "PAGE"
-            }
-          ],
-          defaultValue: "POST",
-          ui: {
-            displayMode: "segmented-control"
-          }
-        }),
         authors: (0, import_fields2.relationship)({
           ref: "User.posts",
           many: true
