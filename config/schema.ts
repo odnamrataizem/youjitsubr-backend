@@ -13,10 +13,24 @@ import {
 
 import { createdAt, picture, rich, updatedAt, withSlug } from './fields';
 
+export function extractTime(date: Date) {
+  return [
+    date.getFullYear().toString().padStart(4, '0'),
+    (date.getMonth() + 1).toString().padStart(2, '0'),
+  ] as const;
+}
+
 export const lists: Lists = {
   User: withSlug(
     list({
       access: allowAll,
+      hooks: {
+        validateInput({ resolvedData, addValidationError }) {
+          if (!resolvedData.picture.id) {
+            addValidationError('Missing required field: picture');
+          }
+        },
+      },
       fields: {
         name: text({
           validation: {
@@ -57,6 +71,79 @@ export const lists: Lists = {
   Post: withSlug(
     list({
       access: allowAll,
+      hooks: {
+        async validateInput({
+          item,
+          operation,
+          resolvedData,
+          context,
+          addValidationError,
+        }) {
+          if (resolvedData.kind === 'PAGE') {
+            return;
+          }
+
+          if (!resolvedData.cover.id) {
+            addValidationError('Missing required field: cover');
+          }
+
+          // Many fields
+          for (const field of ['authors', 'tags'] as const) {
+            if (operation === 'create' && !resolvedData[field]) {
+              addValidationError(`Missing required relationship: ${field}`);
+              continue;
+            }
+
+            const query =
+              // eslint-disable-next-line no-await-in-loop
+              await context.prisma.post.findFirst({
+                where: {
+                  id: { equals: item?.id },
+                },
+                select: {
+                  _count: {
+                    select: {
+                      [field]: true,
+                    },
+                  },
+                },
+              });
+            // @ts-expect-error - TS bug?
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            const currentCount = query?._count?.[field] || 0;
+            // @ts-expect-error - TS bug?
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+            const deletedCount = resolvedData?.[field]?.disconnect?.length || 0;
+
+            if (currentCount && currentCount === deletedCount) {
+              addValidationError(`Missing required relationship: ${field}`);
+            }
+          }
+
+          // Single fields
+          for (const field of ['category'] as const) {
+            const hasExistingField =
+              // eslint-disable-next-line no-await-in-loop
+              (await context.prisma.post.count({
+                where: {
+                  id: { equals: item?.id },
+                  [field]: { isNot: null },
+                },
+              })) > 0;
+            const noField = !resolvedData[field];
+            // @ts-expect-error - TS bug?
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            const fieldRemoved = resolvedData[field]?.disconnect;
+
+            if (
+              (operation === 'create' && noField) ||
+              (operation === 'update' &&
+                (fieldRemoved || (noField && !hasExistingField)))
+            )
+              addValidationError(`Missing required relationship: ${field}`);
+          }
+        },
+      },
       fields: {
         title: text({
           validation: {
@@ -150,6 +237,13 @@ export const lists: Lists = {
   Category: withSlug(
     list({
       access: allowAll,
+      hooks: {
+        validateInput({ resolvedData, addValidationError }) {
+          if (!resolvedData.cover.id) {
+            addValidationError('Missing required field: picture');
+          }
+        },
+      },
       fields: {
         name: text({
           validation: {

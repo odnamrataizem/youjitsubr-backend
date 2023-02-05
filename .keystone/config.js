@@ -183,6 +183,13 @@ var lists = {
   User: withSlug(
     (0, import_core.list)({
       access: import_access2.allowAll,
+      hooks: {
+        validateInput({ resolvedData, addValidationError }) {
+          if (!resolvedData.picture.id) {
+            addValidationError("Missing required field: picture");
+          }
+        }
+      },
       fields: {
         name: (0, import_fields2.text)({
           validation: {
@@ -222,6 +229,57 @@ var lists = {
   Post: withSlug(
     (0, import_core.list)({
       access: import_access2.allowAll,
+      hooks: {
+        async validateInput({
+          item,
+          operation,
+          resolvedData,
+          context,
+          addValidationError
+        }) {
+          if (resolvedData.kind === "PAGE") {
+            return;
+          }
+          if (!resolvedData.cover.id) {
+            addValidationError("Missing required field: cover");
+          }
+          for (const field of ["authors", "tags"]) {
+            if (operation === "create" && !resolvedData[field]) {
+              addValidationError(`Missing required relationship: ${field}`);
+              continue;
+            }
+            const query = await context.prisma.post.findFirst({
+              where: {
+                id: { equals: item?.id }
+              },
+              select: {
+                _count: {
+                  select: {
+                    [field]: true
+                  }
+                }
+              }
+            });
+            const currentCount = query?._count?.[field] || 0;
+            const deletedCount = resolvedData?.[field]?.disconnect?.length || 0;
+            if (currentCount && currentCount === deletedCount) {
+              addValidationError(`Missing required relationship: ${field}`);
+            }
+          }
+          for (const field of ["category"]) {
+            const hasExistingField = await context.prisma.post.count({
+              where: {
+                id: { equals: item?.id },
+                [field]: { isNot: null }
+              }
+            }) > 0;
+            const noField = !resolvedData[field];
+            const fieldRemoved = resolvedData[field]?.disconnect;
+            if (operation === "create" && noField || operation === "update" && (fieldRemoved || noField && !hasExistingField))
+              addValidationError(`Missing required relationship: ${field}`);
+          }
+        }
+      },
       fields: {
         title: (0, import_fields2.text)({
           validation: {
@@ -315,6 +373,13 @@ var lists = {
   Category: withSlug(
     (0, import_core.list)({
       access: import_access2.allowAll,
+      hooks: {
+        validateInput({ resolvedData, addValidationError }) {
+          if (!resolvedData.cover.id) {
+            addValidationError("Missing required field: picture");
+          }
+        }
+      },
       fields: {
         name: (0, import_fields2.text)({
           validation: {
