@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import type { Lists } from '.keystone/types';
 import { list } from '@keystone-6/core';
-import { allowAll } from '@keystone-6/core/access';
+import { allOperations, allowAll } from '@keystone-6/core/access';
 import {
   checkbox,
   integer,
+  multiselect,
   password,
   relationship,
   text,
@@ -13,21 +14,45 @@ import {
 
 import { createdAt, picture, rich, updatedAt, withSlug } from './fields';
 
-export function extractTime(date: Date) {
-  return [
-    date.getFullYear().toString().padStart(4, '0'),
-    (date.getMonth() + 1).toString().padStart(2, '0'),
-  ] as const;
+function isOfRole(roles: string[], role: string) {
+  return roles.includes('SUPER') || roles.includes(role);
+}
+
+function maybeArray<T>(item: T | T[] | readonly T[]) {
+  if (Array.isArray(item)) {
+    return item;
+  }
+
+  return [item] as readonly T[];
 }
 
 export const lists: Lists = {
   User: withSlug(
     list({
-      access: allowAll,
+      access: {
+        operation: {
+          ...allOperations(({ session }) =>
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
+            isOfRole(session?.data.roles, 'ADMIN'),
+          ),
+          query: allowAll,
+        },
+      },
       hooks: {
-        validateInput({ resolvedData, addValidationError }) {
-          if (!resolvedData.picture.id) {
+        validateInput({ operation, resolvedData, addValidationError }) {
+          if (
+            (operation === 'create' && !resolvedData.picture.id) ||
+            (operation === 'update' && resolvedData.picture.id === null)
+          ) {
             addValidationError('Missing required field: picture');
+          }
+
+          if (
+            !(resolvedData.roles as unknown[])?.length &&
+            (operation === 'create' ||
+              (operation === 'update' && resolvedData.roles !== undefined))
+          ) {
+            addValidationError('Missing required field: roles');
           }
         },
       },
@@ -51,6 +76,22 @@ export const lists: Lists = {
             rejectCommon: true,
           },
         }),
+        roles: multiselect({
+          access: {
+            create: ({ session }) =>
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
+              isOfRole(session?.data.roles, 'SUPER'),
+            update: ({ session }) =>
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
+              isOfRole(session?.data.roles, 'SUPER'),
+          },
+          type: 'enum',
+          options: [
+            { label: 'Super', value: 'SUPER' },
+            { label: 'Admin', value: 'ADMIN' },
+            { label: 'User', value: 'USER' },
+          ],
+        }),
         posts: relationship({
           ref: 'Post.authors',
           many: true,
@@ -69,7 +110,15 @@ export const lists: Lists = {
   ),
   Page: withSlug(
     list({
-      access: allowAll,
+      access: {
+        operation: {
+          ...allOperations(({ session }) =>
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
+            isOfRole(session?.data.roles, 'ADMIN'),
+          ),
+          query: allowAll,
+        },
+      },
       fields: {
         title: text({
           validation: {
@@ -90,7 +139,42 @@ export const lists: Lists = {
   ),
   Post: withSlug(
     list({
-      access: allowAll,
+      access: {
+        operation: {
+          ...allOperations(({ session }) => Boolean(session)),
+          query: allowAll,
+        },
+        item: {
+          async update({ session, context, item }) {
+            if (!session) {
+              return false;
+            }
+
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
+            if (isOfRole(session?.data.roles, 'ADMIN')) {
+              return true;
+            }
+
+            const query = await context.prisma.post.findFirst({
+              where: {
+                id: { equals: item.id },
+              },
+              select: {
+                authors: {
+                  select: {
+                    id: true,
+                  },
+                },
+              },
+            });
+
+            return (
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+              query?.authors.some(item => item.id === session?.data.id) ?? false
+            );
+          },
+        },
+      },
       hooks: {
         async validateInput({
           item,
@@ -99,7 +183,10 @@ export const lists: Lists = {
           context,
           addValidationError,
         }) {
-          if (!resolvedData.cover.id) {
+          if (
+            (operation === 'create' && !resolvedData.cover.id) ||
+            (operation === 'update' && resolvedData.cover.id === null)
+          ) {
             addValidationError('Missing required field: cover');
           }
 
@@ -175,6 +262,22 @@ export const lists: Lists = {
         cover: picture,
         sticky: checkbox(),
         authors: relationship({
+          access: {
+            create: ({ session, inputData }) =>
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
+              isOfRole(session?.data.roles, 'ADMIN') ||
+              maybeArray(inputData.authors?.connect ?? []).some(
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                item => item.id === session?.data.id,
+              ),
+            update: ({ session, inputData }) =>
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
+              isOfRole(session?.data.roles, 'ADMIN') ||
+              !maybeArray(inputData.authors?.disconnect ?? []).some(
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                item => item.id === session?.data.id,
+              ),
+          },
           ref: 'User.posts',
           many: true,
         }),
@@ -212,7 +315,12 @@ export const lists: Lists = {
   ),
   Tag: withSlug(
     list({
-      access: allowAll,
+      access: {
+        operation: {
+          ...allOperations(({ session }) => Boolean(session)),
+          query: allowAll,
+        },
+      },
       ui: {
         isHidden: true,
       },
@@ -232,11 +340,22 @@ export const lists: Lists = {
   ),
   Category: withSlug(
     list({
-      access: allowAll,
+      access: {
+        operation: {
+          ...allOperations(({ session }) =>
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
+            isOfRole(session?.data.roles, 'ADMIN'),
+          ),
+          query: allowAll,
+        },
+      },
       hooks: {
-        validateInput({ resolvedData, addValidationError }) {
-          if (!resolvedData.cover.id) {
-            addValidationError('Missing required field: picture');
+        validateInput({ operation, resolvedData, addValidationError }) {
+          if (
+            (operation === 'create' && !resolvedData.cover.id) ||
+            (operation === 'update' && resolvedData.cover.id === null)
+          ) {
+            addValidationError('Missing required field: cover');
           }
         },
       },

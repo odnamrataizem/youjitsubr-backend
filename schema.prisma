@@ -24,6 +24,7 @@ model User {
   picture_id        String?
   email             String   @unique @default("")
   password          String
+  roles             Json     @default("[]")
   posts             Post[]   @relation("Post_authors")
   createdAt         DateTime @default(now())
 }

@@ -9,6 +9,7 @@ type User {
   picture: ImageFieldOutput
   email: String
   password: PasswordState
+  roles: [UserRoleType!]
   posts(where: PostWhereInput! = {}, orderBy: [PostOrderByInput!]! = [], take: Int, skip: Int! = 0): [Post!]
   postsCount(where: PostWhereInput! = {}): Int
   createdAt: DateTime
@@ -36,6 +37,12 @@ enum ImageExtension {
 
 type PasswordState {
   isSet: Boolean!
+}
+
+enum UserRoleType {
+  SUPER
+  ADMIN
+  USER
 }
 
 scalar DateTime @specifiedBy(url: "https://datatracker.ietf.org/doc/html/rfc3339#section-5.6")
@@ -140,6 +147,7 @@ input UserUpdateInput {
   picture: ImageFieldInput
   email: String
   password: String
+  roles: [UserRoleType!]
   posts: PostRelateToManyForUpdateInput
   createdAt: DateTime
 }
@@ -170,6 +178,7 @@ input UserCreateInput {
   picture: ImageFieldInput
   email: String
   password: String
+  roles: [UserRoleType!]
   posts: PostRelateToManyForCreateInput
   createdAt: DateTime
 }

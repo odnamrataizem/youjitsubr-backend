@@ -46,7 +46,7 @@ if (!sessionSecret && process.env.NODE_ENV !== "production") {
 var { withAuth } = (0, import_auth.createAuth)({
   listKey: "User",
   identityField: "email",
-  sessionData: "name createdAt",
+  sessionData: "id roles",
   secretField: "password",
   initFirstItem: process.env.NODE_ENV === "production" ? void 0 : {
     fields: ["name", "email", "password"]
@@ -179,14 +179,33 @@ function withSlug(config2) {
 }
 
 // config/schema.ts
+function isOfRole(roles, role) {
+  return roles.includes("SUPER") || roles.includes(role);
+}
+function maybeArray(item) {
+  if (Array.isArray(item)) {
+    return item;
+  }
+  return [item];
+}
 var lists = {
   User: withSlug(
     (0, import_core.list)({
-      access: import_access2.allowAll,
+      access: {
+        operation: {
+          ...(0, import_access2.allOperations)(
+            ({ session: session2 }) => isOfRole(session2?.data.roles, "ADMIN")
+          ),
+          query: import_access2.allowAll
+        }
+      },
       hooks: {
-        validateInput({ resolvedData, addValidationError }) {
-          if (!resolvedData.picture.id) {
+        validateInput({ operation, resolvedData, addValidationError }) {
+          if (operation === "create" && !resolvedData.picture.id || operation === "update" && resolvedData.picture.id === null) {
             addValidationError("Missing required field: picture");
+          }
+          if (!resolvedData.roles?.length && (operation === "create" || operation === "update" && resolvedData.roles !== void 0)) {
+            addValidationError("Missing required field: roles");
           }
         }
       },
@@ -210,6 +229,18 @@ var lists = {
             rejectCommon: true
           }
         }),
+        roles: (0, import_fields2.multiselect)({
+          access: {
+            create: ({ session: session2 }) => isOfRole(session2?.data.roles, "SUPER"),
+            update: ({ session: session2 }) => isOfRole(session2?.data.roles, "SUPER")
+          },
+          type: "enum",
+          options: [
+            { label: "Super", value: "SUPER" },
+            { label: "Admin", value: "ADMIN" },
+            { label: "User", value: "USER" }
+          ]
+        }),
         posts: (0, import_fields2.relationship)({
           ref: "Post.authors",
           many: true,
@@ -228,7 +259,14 @@ var lists = {
   ),
   Page: withSlug(
     (0, import_core.list)({
-      access: import_access2.allowAll,
+      access: {
+        operation: {
+          ...(0, import_access2.allOperations)(
+            ({ session: session2 }) => isOfRole(session2?.data.roles, "ADMIN")
+          ),
+          query: import_access2.allowAll
+        }
+      },
       fields: {
         title: (0, import_fields2.text)({
           validation: {
@@ -249,7 +287,35 @@ var lists = {
   ),
   Post: withSlug(
     (0, import_core.list)({
-      access: import_access2.allowAll,
+      access: {
+        operation: {
+          ...(0, import_access2.allOperations)(({ session: session2 }) => Boolean(session2)),
+          query: import_access2.allowAll
+        },
+        item: {
+          async update({ session: session2, context, item }) {
+            if (!session2) {
+              return false;
+            }
+            if (isOfRole(session2?.data.roles, "ADMIN")) {
+              return true;
+            }
+            const query = await context.prisma.post.findFirst({
+              where: {
+                id: { equals: item.id }
+              },
+              select: {
+                authors: {
+                  select: {
+                    id: true
+                  }
+                }
+              }
+            });
+            return query?.authors.some((item2) => item2.id === session2?.data.id) ?? false;
+          }
+        }
+      },
       hooks: {
         async validateInput({
           item,
@@ -258,7 +324,7 @@ var lists = {
           context,
           addValidationError
         }) {
-          if (!resolvedData.cover.id) {
+          if (operation === "create" && !resolvedData.cover.id || operation === "update" && resolvedData.cover.id === null) {
             addValidationError("Missing required field: cover");
           }
           for (const field of ["authors", "tags"]) {
@@ -313,6 +379,14 @@ var lists = {
         cover: picture,
         sticky: (0, import_fields2.checkbox)(),
         authors: (0, import_fields2.relationship)({
+          access: {
+            create: ({ session: session2, inputData }) => isOfRole(session2?.data.roles, "ADMIN") || maybeArray(inputData.authors?.connect ?? []).some(
+              (item) => item.id === session2?.data.id
+            ),
+            update: ({ session: session2, inputData }) => isOfRole(session2?.data.roles, "ADMIN") || !maybeArray(inputData.authors?.disconnect ?? []).some(
+              (item) => item.id === session2?.data.id
+            )
+          },
           ref: "User.posts",
           many: true
         }),
@@ -350,7 +424,12 @@ var lists = {
   ),
   Tag: withSlug(
     (0, import_core.list)({
-      access: import_access2.allowAll,
+      access: {
+        operation: {
+          ...(0, import_access2.allOperations)(({ session: session2 }) => Boolean(session2)),
+          query: import_access2.allowAll
+        }
+      },
       ui: {
         isHidden: true
       },
@@ -370,11 +449,18 @@ var lists = {
   ),
   Category: withSlug(
     (0, import_core.list)({
-      access: import_access2.allowAll,
+      access: {
+        operation: {
+          ...(0, import_access2.allOperations)(
+            ({ session: session2 }) => isOfRole(session2?.data.roles, "ADMIN")
+          ),
+          query: import_access2.allowAll
+        }
+      },
       hooks: {
-        validateInput({ resolvedData, addValidationError }) {
-          if (!resolvedData.cover.id) {
-            addValidationError("Missing required field: picture");
+        validateInput({ operation, resolvedData, addValidationError }) {
+          if (operation === "create" && !resolvedData.cover.id || operation === "update" && resolvedData.cover.id === null) {
+            addValidationError("Missing required field: cover");
           }
         }
       },
@@ -408,7 +494,7 @@ var lists = {
 var import_mkdirp = require("mkdirp");
 var storagePath = "public/images";
 (0, import_mkdirp.mkdirpSync)(storagePath);
-var host = (process.env.ASSET_BASE_URL ?? "") || "http://localhost:3000";
+var host = (process.env.ASSET_BASE_URL ?? "") || `http://localhost:${process.env.PORT ?? 3e3}`;
 var storage = {
   myLocal: {
     kind: "local",
