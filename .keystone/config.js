@@ -440,7 +440,11 @@ var lists = {
             description: "Optionally customise this post's publish date."
           }
         }),
-        sticky: (0, import_fields2.checkbox)()
+        sticky: (0, import_fields2.checkbox)({
+          ui: {
+            description: "If checked, this post will be displayed at the top."
+          }
+        })
       }
     })
   ),
