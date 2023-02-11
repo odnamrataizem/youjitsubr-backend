@@ -180,8 +180,9 @@ function withSlug(config2) {
 }
 
 // config/schema.ts
-function isOfRole(roles, role) {
-  return roles.includes("SUPER") || roles.includes(role);
+function hasRole(session2, ...role) {
+  const roles = session2?.data.roles ?? [];
+  return session2?.data.active && (roles.includes("SUPER") || roles.some((r) => role.includes(r)));
 }
 function maybeArray(item) {
   if (Array.isArray(item)) {
@@ -194,9 +195,7 @@ var lists = {
     (0, import_core.list)({
       access: {
         operation: {
-          ...(0, import_access2.allOperations)(
-            ({ session: session2 }) => isOfRole(session2?.data.roles, "ADMIN")
-          ),
+          ...(0, import_access2.allOperations)(({ session: session2 }) => hasRole(session2, "ADMIN")),
           query: import_access2.allowAll
         }
       },
@@ -232,8 +231,8 @@ var lists = {
         }),
         roles: (0, import_fields2.multiselect)({
           access: {
-            create: ({ session: session2 }) => isOfRole(session2?.data.roles, "SUPER"),
-            update: ({ session: session2 }) => isOfRole(session2?.data.roles, "SUPER")
+            create: ({ session: session2 }) => hasRole(session2, "SUPER"),
+            update: ({ session: session2 }) => hasRole(session2, "SUPER")
           },
           type: "enum",
           options: [
@@ -265,9 +264,7 @@ var lists = {
     (0, import_core.list)({
       access: {
         operation: {
-          ...(0, import_access2.allOperations)(
-            ({ session: session2 }) => isOfRole(session2?.data.roles, "ADMIN")
-          ),
+          ...(0, import_access2.allOperations)(({ session: session2 }) => hasRole(session2, "ADMIN")),
           query: import_access2.allowAll
         }
       },
@@ -293,7 +290,7 @@ var lists = {
     (0, import_core.list)({
       access: {
         operation: {
-          ...(0, import_access2.allOperations)(({ session: session2 }) => Boolean(session2)),
+          ...(0, import_access2.allOperations)(({ session: session2 }) => hasRole(session2, "USER", "ADMIN")),
           query: import_access2.allowAll
         },
         item: {
@@ -301,7 +298,7 @@ var lists = {
             if (!session2) {
               return false;
             }
-            if (isOfRole(session2?.data.roles, "ADMIN")) {
+            if (hasRole(session2, "ADMIN")) {
               return true;
             }
             const query = await context.prisma.post.findFirst({
@@ -384,12 +381,12 @@ var lists = {
         sticky: (0, import_fields2.checkbox)(),
         authors: (0, import_fields2.relationship)({
           access: {
-            create: ({ session: session2, inputData }) => Boolean(session2) && (isOfRole(session2.data.roles, "ADMIN") || !inputData.authors?.create && maybeArray(inputData.authors?.connect ?? []).some(
+            create: ({ session: session2, inputData }) => hasRole(session2, "ADMIN") || !inputData.authors?.create && maybeArray(inputData.authors?.connect ?? []).some(
               (item) => item.id === session2.data.id
-            )),
-            update: ({ session: session2, inputData }) => Boolean(session2) && (isOfRole(session2.data.roles, "ADMIN") || !inputData.authors?.create && !inputData.authors?.set && !maybeArray(inputData.authors?.disconnect ?? []).some(
+            ),
+            update: ({ session: session2, inputData }) => hasRole(session2, "ADMIN") || !inputData.authors?.create && !inputData.authors?.set && !maybeArray(inputData.authors?.disconnect ?? []).some(
               (item) => item.id === session2.data.id
-            ))
+            )
           },
           ref: "User.posts",
           many: true
@@ -455,9 +452,7 @@ var lists = {
     (0, import_core.list)({
       access: {
         operation: {
-          ...(0, import_access2.allOperations)(
-            ({ session: session2 }) => isOfRole(session2?.data.roles, "ADMIN")
-          ),
+          ...(0, import_access2.allOperations)(({ session: session2 }) => hasRole(session2, "ADMIN")),
           query: import_access2.allowAll
         }
       },

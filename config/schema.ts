@@ -14,14 +14,15 @@ import {
 
 import { createdAt, picture, rich, updatedAt, withSlug } from './fields';
 
-function hasRole(role: string, session: any): boolean {
+function hasRole(session: any, ...role: string[]): boolean {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
   const roles: string[] = session?.data.roles ?? [];
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   return (
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    session?.data.active && (roles.includes('SUPER') || roles.includes(role))
+    session?.data.active &&
+    (roles.includes('SUPER') || roles.some(r => role.includes(r)))
   );
 }
 
@@ -38,7 +39,7 @@ export const lists: Lists = {
     list({
       access: {
         operation: {
-          ...allOperations(({ session }) => hasRole('ADMIN', session)),
+          ...allOperations(({ session }) => hasRole(session, 'ADMIN')),
           query: allowAll,
         },
       },
@@ -82,8 +83,8 @@ export const lists: Lists = {
         }),
         roles: multiselect({
           access: {
-            create: ({ session }) => hasRole('SUPER', session),
-            update: ({ session }) => hasRole('SUPER', session),
+            create: ({ session }) => hasRole(session, 'SUPER'),
+            update: ({ session }) => hasRole(session, 'SUPER'),
           },
           type: 'enum',
           options: [
@@ -115,7 +116,7 @@ export const lists: Lists = {
     list({
       access: {
         operation: {
-          ...allOperations(({ session }) => hasRole('ADMIN', session)),
+          ...allOperations(({ session }) => hasRole(session, 'ADMIN')),
           query: allowAll,
         },
       },
@@ -141,7 +142,7 @@ export const lists: Lists = {
     list({
       access: {
         operation: {
-          ...allOperations(({ session }) => Boolean(session)),
+          ...allOperations(({ session }) => hasRole(session, 'USER', 'ADMIN')),
           query: allowAll,
         },
         item: {
@@ -150,7 +151,7 @@ export const lists: Lists = {
               return false;
             }
 
-            if (hasRole('ADMIN', session)) {
+            if (hasRole(session, 'ADMIN')) {
               return true;
             }
 
@@ -263,14 +264,14 @@ export const lists: Lists = {
         authors: relationship({
           access: {
             create: ({ session, inputData }) =>
-              hasRole('ADMIN', session) ||
+              hasRole(session, 'ADMIN') ||
               (!inputData.authors?.create &&
                 maybeArray(inputData.authors?.connect ?? []).some(
                   // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
                   item => item.id === session.data.id,
                 )),
             update: ({ session, inputData }) =>
-              hasRole('ADMIN', session) ||
+              hasRole(session, 'ADMIN') ||
               (!inputData.authors?.create &&
                 !inputData.authors?.set &&
                 !maybeArray(inputData.authors?.disconnect ?? []).some(
@@ -342,7 +343,7 @@ export const lists: Lists = {
     list({
       access: {
         operation: {
-          ...allOperations(({ session }) => hasRole('ADMIN', session)),
+          ...allOperations(({ session }) => hasRole(session, 'ADMIN')),
           query: allowAll,
         },
       },
