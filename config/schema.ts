@@ -337,7 +337,11 @@ export const lists: Lists = {
             description: "Optionally customise this post's publish date.",
           },
         }),
-        sticky: checkbox(),
+        sticky: checkbox({
+          ui: {
+            description: 'If checked, this post will be displayed at the top.',
+          },
+        }),
       },
     }),
   ),
