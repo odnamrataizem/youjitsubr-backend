@@ -46,24 +46,25 @@ model Page {
 }
 
 model Post {
-  id              String    @id @default(cuid())
-  title           String    @default("")
-  slug            String    @unique @default("")
-  lead            String    @default("")
-  content         Json      @default("[{\"type\":\"paragraph\",\"children\":[{\"text\":\"\"}]}]")
+  id              String         @id @default(cuid())
+  title           String         @default("")
+  slug            String         @unique @default("")
+  lead            String         @default("")
+  content         Json           @default("[{\"type\":\"paragraph\",\"children\":[{\"text\":\"\"}]}]")
   cover_filesize  Int?
   cover_extension String?
   cover_width     Int?
   cover_height    Int?
   cover_id        String?
-  sticky          Boolean   @default(false)
-  authors         User[]    @relation("Post_authors")
-  category        Category? @relation("Post_category", fields: [categoryId], references: [id])
-  categoryId      String?   @map("category")
-  tags            Tag[]     @relation("Post_tags")
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @default(now()) @updatedAt
-  publishedAt     DateTime? @default(now())
+  authors         User[]         @relation("Post_authors")
+  category        Category?      @relation("Post_category", fields: [categoryId], references: [id])
+  categoryId      String?        @map("category")
+  tags            Tag[]          @relation("Post_tags")
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @default(now()) @updatedAt
+  status          PostStatusType @default(DRAFT)
+  publishedAt     DateTime?
+  sticky          Boolean        @default(false)
 
   @@index([categoryId])
 }
@@ -88,4 +89,9 @@ model Category {
   cover_id        String?
   posts           Post[]   @relation("Post_category")
   createdAt       DateTime @default(now())
+}
+
+enum PostStatusType {
+  DRAFT
+  PUBLISHED
 }

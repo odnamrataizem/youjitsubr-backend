@@ -318,6 +318,16 @@ var lists = {
         }
       },
       hooks: {
+        resolveInput({ resolvedData, inputData, item }) {
+          console.log(
+            inputData.status ?? item?.status,
+            inputData.publishedAt ?? item?.publishedAt
+          );
+          if ((inputData.status ?? item?.status) === "PUBLISHED" && !(inputData.publishedAt ?? item?.publishedAt)) {
+            resolvedData.publishedAt = new Date();
+          }
+          return resolvedData;
+        },
         async validateInput({
           item,
           operation,
@@ -378,7 +388,6 @@ var lists = {
         }),
         content: rich,
         cover: picture,
-        sticky: (0, import_fields2.checkbox)(),
         authors: (0, import_fields2.relationship)({
           access: {
             create: ({ session: session2, inputData }) => hasRole(session2, "ADMIN") || !inputData.authors?.create && maybeArray(inputData.authors?.connect ?? []).some(
@@ -412,14 +421,26 @@ var lists = {
         }),
         createdAt,
         updatedAt,
-        publishedAt: (0, import_fields2.timestamp)({
-          defaultValue: {
-            kind: "now"
+        status: (0, import_fields2.select)({
+          validation: {
+            isRequired: true
           },
+          defaultValue: "DRAFT",
+          type: "enum",
+          options: [
+            { label: "Draft", value: "DRAFT" },
+            { label: "Published", value: "PUBLISHED" }
+          ],
+          ui: {
+            displayMode: "segmented-control"
+          }
+        }),
+        publishedAt: (0, import_fields2.timestamp)({
           ui: {
             description: "Optionally customise this post's publish date."
           }
-        })
+        }),
+        sticky: (0, import_fields2.checkbox)()
       }
     })
   ),

@@ -8,6 +8,7 @@ import {
   multiselect,
   password,
   relationship,
+  select,
   text,
   timestamp,
 } from '@keystone-6/core/fields';
@@ -176,6 +177,21 @@ export const lists: Lists = {
         },
       },
       hooks: {
+        resolveInput({ resolvedData, inputData, item }) {
+          console.log(
+            inputData.status ?? item?.status,
+            inputData.publishedAt ?? item?.publishedAt,
+          );
+
+          if (
+            (inputData.status ?? item?.status) === 'PUBLISHED' &&
+            !(inputData.publishedAt ?? item?.publishedAt)
+          ) {
+            resolvedData.publishedAt = new Date();
+          }
+
+          return resolvedData;
+        },
         async validateInput({
           item,
           operation,
@@ -260,7 +276,6 @@ export const lists: Lists = {
         }),
         content: rich,
         cover: picture,
-        sticky: checkbox(),
         authors: relationship({
           access: {
             create: ({ session, inputData }) =>
@@ -303,14 +318,26 @@ export const lists: Lists = {
         }),
         createdAt,
         updatedAt,
-        publishedAt: timestamp({
-          defaultValue: {
-            kind: 'now',
+        status: select({
+          validation: {
+            isRequired: true,
           },
+          defaultValue: 'DRAFT',
+          type: 'enum',
+          options: [
+            { label: 'Draft', value: 'DRAFT' },
+            { label: 'Published', value: 'PUBLISHED' },
+          ],
+          ui: {
+            displayMode: 'segmented-control',
+          },
+        }),
+        publishedAt: timestamp({
           ui: {
             description: "Optionally customise this post's publish date.",
           },
         }),
+        sticky: checkbox(),
       },
     }),
   ),

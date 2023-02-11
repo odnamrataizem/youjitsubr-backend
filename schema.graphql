@@ -282,7 +282,6 @@ type Post {
   lead: String
   content: Post_content_Document
   cover: ImageFieldOutput
-  sticky: Boolean
   authors(where: UserWhereInput! = {}, orderBy: [UserOrderByInput!]! = [], take: Int, skip: Int! = 0): [User!]
   authorsCount(where: UserWhereInput! = {}): Int
   category: Category
@@ -290,11 +289,18 @@ type Post {
   tagsCount(where: TagWhereInput! = {}): Int
   createdAt: DateTime
   updatedAt: DateTime
+  status: PostStatusType
   publishedAt: DateTime
+  sticky: Boolean
 }
 
 type Post_content_Document {
   document(hydrateRelationships: Boolean! = false): JSON!
+}
+
+enum PostStatusType {
+  DRAFT
+  PUBLISHED
 }
 
 input PostWhereUniqueInput {
@@ -310,13 +316,14 @@ input PostWhereInput {
   title: StringFilter
   slug: StringFilter
   lead: StringFilter
-  sticky: BooleanFilter
   authors: UserManyRelationFilter
   category: CategoryWhereInput
   tags: TagManyRelationFilter
   createdAt: DateTimeFilter
   updatedAt: DateTimeFilter
+  status: PostStatusTypeNullableFilter
   publishedAt: DateTimeNullableFilter
+  sticky: BooleanFilter
 }
 
 input UserManyRelationFilter {
@@ -329,6 +336,13 @@ input TagManyRelationFilter {
   every: TagWhereInput
   some: TagWhereInput
   none: TagWhereInput
+}
+
+input PostStatusTypeNullableFilter {
+  equals: PostStatusType
+  in: [PostStatusType!]
+  notIn: [PostStatusType!]
+  not: PostStatusTypeNullableFilter
 }
 
 input DateTimeNullableFilter {
@@ -347,10 +361,11 @@ input PostOrderByInput {
   title: OrderDirection
   slug: OrderDirection
   lead: OrderDirection
-  sticky: OrderDirection
   createdAt: OrderDirection
   updatedAt: OrderDirection
+  status: OrderDirection
   publishedAt: OrderDirection
+  sticky: OrderDirection
 }
 
 input PostUpdateInput {
@@ -359,13 +374,14 @@ input PostUpdateInput {
   lead: String
   content: JSON
   cover: ImageFieldInput
-  sticky: Boolean
   authors: UserRelateToManyForUpdateInput
   category: CategoryRelateToOneForUpdateInput
   tags: TagRelateToManyForUpdateInput
   createdAt: DateTime
   updatedAt: DateTime
+  status: PostStatusType
   publishedAt: DateTime
+  sticky: Boolean
 }
 
 input UserRelateToManyForUpdateInput {
@@ -399,13 +415,14 @@ input PostCreateInput {
   lead: String
   content: JSON
   cover: ImageFieldInput
-  sticky: Boolean
   authors: UserRelateToManyForCreateInput
   category: CategoryRelateToOneForCreateInput
   tags: TagRelateToManyForCreateInput
   createdAt: DateTime
   updatedAt: DateTime
+  status: PostStatusType
   publishedAt: DateTime
+  sticky: Boolean
 }
 
 input UserRelateToManyForCreateInput {
