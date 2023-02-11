@@ -14,8 +14,15 @@ import {
 
 import { createdAt, picture, rich, updatedAt, withSlug } from './fields';
 
-function isOfRole(roles: string[], role: string) {
-  return roles.includes('SUPER') || roles.includes(role);
+function hasRole(role: string, session: any): boolean {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+  const roles: string[] = session?.data.roles ?? [];
+
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+  return (
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    session?.data.active && (roles.includes('SUPER') || roles.includes(role))
+  );
 }
 
 function maybeArray<T>(item: T | T[] | readonly T[]) {
@@ -31,10 +38,7 @@ export const lists: Lists = {
     list({
       access: {
         operation: {
-          ...allOperations(({ session }) =>
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
-            isOfRole(session?.data.roles, 'ADMIN'),
-          ),
+          ...allOperations(({ session }) => hasRole('ADMIN', session)),
           query: allowAll,
         },
       },
@@ -78,12 +82,8 @@ export const lists: Lists = {
         }),
         roles: multiselect({
           access: {
-            create: ({ session }) =>
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
-              isOfRole(session?.data.roles, 'SUPER'),
-            update: ({ session }) =>
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
-              isOfRole(session?.data.roles, 'SUPER'),
+            create: ({ session }) => hasRole('SUPER', session),
+            update: ({ session }) => hasRole('SUPER', session),
           },
           type: 'enum',
           options: [
@@ -115,10 +115,7 @@ export const lists: Lists = {
     list({
       access: {
         operation: {
-          ...allOperations(({ session }) =>
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
-            isOfRole(session?.data.roles, 'ADMIN'),
-          ),
+          ...allOperations(({ session }) => hasRole('ADMIN', session)),
           query: allowAll,
         },
       },
@@ -153,8 +150,7 @@ export const lists: Lists = {
               return false;
             }
 
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
-            if (isOfRole(session?.data.roles, 'ADMIN')) {
+            if (hasRole('ADMIN', session)) {
               return true;
             }
 
@@ -267,24 +263,20 @@ export const lists: Lists = {
         authors: relationship({
           access: {
             create: ({ session, inputData }) =>
-              Boolean(session) &&
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
-              (isOfRole(session.data.roles, 'ADMIN') ||
-                (!inputData.authors?.create &&
-                  maybeArray(inputData.authors?.connect ?? []).some(
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                    item => item.id === session.data.id,
-                  ))),
+              hasRole('ADMIN', session) ||
+              (!inputData.authors?.create &&
+                maybeArray(inputData.authors?.connect ?? []).some(
+                  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                  item => item.id === session.data.id,
+                )),
             update: ({ session, inputData }) =>
-              Boolean(session) &&
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
-              (isOfRole(session.data.roles, 'ADMIN') ||
-                (!inputData.authors?.create &&
-                  !inputData.authors?.set &&
-                  !maybeArray(inputData.authors?.disconnect ?? []).some(
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                    item => item.id === session.data.id,
-                  ))),
+              hasRole('ADMIN', session) ||
+              (!inputData.authors?.create &&
+                !inputData.authors?.set &&
+                !maybeArray(inputData.authors?.disconnect ?? []).some(
+                  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                  item => item.id === session.data.id,
+                )),
           },
           ref: 'User.posts',
           many: true,
@@ -350,10 +342,7 @@ export const lists: Lists = {
     list({
       access: {
         operation: {
-          ...allOperations(({ session }) =>
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
-            isOfRole(session?.data.roles, 'ADMIN'),
-          ),
+          ...allOperations(({ session }) => hasRole('ADMIN', session)),
           query: allowAll,
         },
       },
