@@ -104,6 +104,9 @@ export const lists: Lists = {
             },
           },
         }),
+        active: checkbox({
+          defaultValue: true,
+        }),
         createdAt,
       },
     }),
@@ -264,19 +267,24 @@ export const lists: Lists = {
         authors: relationship({
           access: {
             create: ({ session, inputData }) =>
+              Boolean(session) &&
               // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
-              isOfRole(session?.data.roles, 'ADMIN') ||
-              maybeArray(inputData.authors?.connect ?? []).some(
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                item => item.id === session?.data.id,
-              ),
+              (isOfRole(session.data.roles, 'ADMIN') ||
+                (!inputData.authors?.create &&
+                  maybeArray(inputData.authors?.connect ?? []).some(
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                    item => item.id === session.data.id,
+                  ))),
             update: ({ session, inputData }) =>
+              Boolean(session) &&
               // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
-              isOfRole(session?.data.roles, 'ADMIN') ||
-              !maybeArray(inputData.authors?.disconnect ?? []).some(
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                item => item.id === session?.data.id,
-              ),
+              (isOfRole(session.data.roles, 'ADMIN') ||
+                (!inputData.authors?.create &&
+                  !inputData.authors?.set &&
+                  !maybeArray(inputData.authors?.disconnect ?? []).some(
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                    item => item.id === session.data.id,
+                  ))),
           },
           ref: 'User.posts',
           many: true,

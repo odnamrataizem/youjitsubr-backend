@@ -12,6 +12,7 @@ type User {
   roles: [UserRoleType!]
   posts(where: PostWhereInput! = {}, orderBy: [PostOrderByInput!]! = [], take: Int, skip: Int! = 0): [Post!]
   postsCount(where: PostWhereInput! = {}): Int
+  active: Boolean
   createdAt: DateTime
 }
 
@@ -62,6 +63,7 @@ input UserWhereInput {
   slug: StringFilter
   email: StringFilter
   posts: PostManyRelationFilter
+  active: BooleanFilter
   createdAt: DateTimeFilter
 }
 
@@ -116,6 +118,11 @@ input PostManyRelationFilter {
   none: PostWhereInput
 }
 
+input BooleanFilter {
+  equals: Boolean
+  not: BooleanFilter
+}
+
 input DateTimeFilter {
   equals: DateTime
   in: [DateTime!]
@@ -132,6 +139,7 @@ input UserOrderByInput {
   name: OrderDirection
   slug: OrderDirection
   email: OrderDirection
+  active: OrderDirection
   createdAt: OrderDirection
 }
 
@@ -149,6 +157,7 @@ input UserUpdateInput {
   password: String
   roles: [UserRoleType!]
   posts: PostRelateToManyForUpdateInput
+  active: Boolean
   createdAt: DateTime
 }
 
@@ -180,6 +189,7 @@ input UserCreateInput {
   password: String
   roles: [UserRoleType!]
   posts: PostRelateToManyForCreateInput
+  active: Boolean
   createdAt: DateTime
 }
 
@@ -307,11 +317,6 @@ input PostWhereInput {
   createdAt: DateTimeFilter
   updatedAt: DateTimeFilter
   publishedAt: DateTimeNullableFilter
-}
-
-input BooleanFilter {
-  equals: Boolean
-  not: BooleanFilter
 }
 
 input UserManyRelationFilter {

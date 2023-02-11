@@ -26,6 +26,7 @@ model User {
   password          String
   roles             Json     @default("[]")
   posts             Post[]   @relation("Post_authors")
+  active            Boolean  @default(true)
   createdAt         DateTime @default(now())
 }
 

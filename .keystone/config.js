@@ -46,10 +46,11 @@ if (!sessionSecret && process.env.NODE_ENV !== "production") {
 var { withAuth } = (0, import_auth.createAuth)({
   listKey: "User",
   identityField: "email",
-  sessionData: "id roles",
+  sessionData: "id active roles",
   secretField: "password",
   initFirstItem: process.env.NODE_ENV === "production" ? void 0 : {
-    fields: ["name", "email", "password"]
+    fields: ["name", "email", "password"],
+    itemData: { roles: ["SUPER"] }
   }
 });
 var sessionMaxAge = 2592e3;
@@ -253,6 +254,9 @@ var lists = {
             }
           }
         }),
+        active: (0, import_fields2.checkbox)({
+          defaultValue: true
+        }),
         createdAt
       }
     })
@@ -380,12 +384,12 @@ var lists = {
         sticky: (0, import_fields2.checkbox)(),
         authors: (0, import_fields2.relationship)({
           access: {
-            create: ({ session: session2, inputData }) => isOfRole(session2?.data.roles, "ADMIN") || maybeArray(inputData.authors?.connect ?? []).some(
-              (item) => item.id === session2?.data.id
-            ),
-            update: ({ session: session2, inputData }) => isOfRole(session2?.data.roles, "ADMIN") || !maybeArray(inputData.authors?.disconnect ?? []).some(
-              (item) => item.id === session2?.data.id
-            )
+            create: ({ session: session2, inputData }) => Boolean(session2) && (isOfRole(session2.data.roles, "ADMIN") || !inputData.authors?.create && maybeArray(inputData.authors?.connect ?? []).some(
+              (item) => item.id === session2.data.id
+            )),
+            update: ({ session: session2, inputData }) => Boolean(session2) && (isOfRole(session2.data.roles, "ADMIN") || !inputData.authors?.create && !inputData.authors?.set && !maybeArray(inputData.authors?.disconnect ?? []).some(
+              (item) => item.id === session2.data.id
+            ))
           },
           ref: "User.posts",
           many: true
@@ -527,7 +531,12 @@ var keystone_default = withAuth(
     lists,
     session,
     storage,
-    telemetry: false
+    telemetry: false,
+    ui: {
+      isAccessAllowed({ session: session2 }) {
+        return session2?.data?.active ?? false;
+      }
+    }
   })
 );
 // Annotate the CommonJS export names for ESM import in node:
