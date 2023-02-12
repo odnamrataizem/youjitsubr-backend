@@ -222,8 +222,13 @@ var lists = {
     (0, import_core.list)({
       access: {
         operation: {
-          ...(0, import_access2.allOperations)(({ session: session2 }) => hasRole(session2, "ADMIN")),
-          query: import_access2.allowAll
+          query: import_access2.allowAll,
+          create: ({ session: session2 }) => hasRole(session2, "ADMIN"),
+          update: ({ session: session2 }) => hasRole(session2, "USER", "ADMIN"),
+          delete: ({ session: session2 }) => hasRole(session2, "ADMIN")
+        },
+        item: {
+          update: ({ session: session2, item }) => item.id === session2?.data.id
         }
       },
       hooks: {

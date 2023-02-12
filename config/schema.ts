@@ -83,8 +83,14 @@ export const lists: Lists = {
     list({
       access: {
         operation: {
-          ...allOperations(({ session }) => hasRole(session, 'ADMIN')),
           query: allowAll,
+          create: ({ session }) => hasRole(session, 'ADMIN'),
+          update: ({ session }) => hasRole(session, 'USER', 'ADMIN'),
+          delete: ({ session }) => hasRole(session, 'ADMIN'),
+        },
+        item: {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          update: ({ session, item }) => item.id === session?.data.id,
         },
       },
       hooks: {
