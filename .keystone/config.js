@@ -60,9 +60,12 @@ var session = (0, import_session.statelessSessions)({
 });
 
 // config/schema.ts
+var import_node_crypto2 = require("node:crypto");
 var import_core = require("@keystone-6/core");
 var import_access2 = require("@keystone-6/core/access");
 var import_fields2 = require("@keystone-6/core/fields");
+var import_lodash = __toESM(require("lodash.range"));
+var import_node_fetch = __toESM(require("node-fetch"));
 
 // config/fields.ts
 var import_access = require("@keystone-6/core/access");
@@ -184,6 +187,30 @@ function hasRole(session2, ...role) {
   const roles = session2?.data.roles ?? [];
   return session2?.data.active && (roles.includes("SUPER") || roles.some((r) => role.includes(r)));
 }
+function refreshPaths(paths) {
+  const baseUrl = process.env.FRONTEND_BASE_URL;
+  if (!baseUrl) {
+    return;
+  }
+  paths = [...new Set(paths)];
+  const body = JSON.stringify(paths);
+  const signature = (0, import_node_crypto2.createHmac)("sha256", process.env.WEBHOOK_SECRET ?? "").update(body).digest("hex");
+  void (0, import_node_fetch.default)(`${baseUrl}/api/revalidate`, {
+    headers: {
+      "x-signature": signature
+    },
+    body,
+    method: "POST"
+  });
+}
+function extractTime(date) {
+  return [
+    date.getFullYear().toString().padStart(4, "0"),
+    (date.getMonth() + 1).toString().padStart(2, "0")
+  ];
+}
+var POSTS_PER_PAGE = 30;
+var PAGE_PREFIX = "~p";
 function maybeArray(item) {
   if (Array.isArray(item)) {
     return item;
@@ -200,13 +227,87 @@ var lists = {
         }
       },
       hooks: {
-        validateInput({ operation, resolvedData, addValidationError }) {
+        async validateInput({
+          operation,
+          resolvedData,
+          context,
+          addValidationError
+        }) {
           if (operation === "create" && !resolvedData.picture.id || operation === "update" && resolvedData.picture.id === null) {
             addValidationError("Missing required field: picture");
           }
           if (!resolvedData.roles?.length && (operation === "create" || operation === "update" && resolvedData.roles !== void 0)) {
             addValidationError("Missing required field: roles");
           }
+          const supers = await context.prisma.user.findMany({
+            select: {
+              id: true
+            },
+            where: {
+              roles: {
+                array_contains: "SUPER"
+              }
+            }
+          });
+          if (operation === "update" && !resolvedData.roles.includes("SUPER") && supers.length === 1 && supers[0].id === resolvedData.id) {
+            addValidationError("This is the last Super user!");
+          }
+        },
+        async validateDelete({ item, context, addValidationError }) {
+          const superCount = await context.prisma.user.count({
+            where: {
+              roles: {
+                array_contains: "SUPER"
+              }
+            }
+          });
+          if (item.roles.includes("SUPER") && superCount === 1) {
+            addValidationError("This is the last Super user!");
+          }
+        },
+        async afterOperation({ item, originalItem, context }) {
+          const paths = ["/", "/people"];
+          const posts = await context.prisma.post.findMany({
+            select: {
+              id: true,
+              slug: true,
+              publishedAt: true,
+              category: {
+                select: {
+                  slug: true
+                }
+              }
+            },
+            where: {
+              authors: {
+                some: {
+                  id: (item ?? originalItem).id
+                }
+              },
+              status: "PUBLISHED"
+            }
+          });
+          let subpaths = [];
+          if (posts.length > 0) {
+            const pages = Math.ceil(posts.length / POSTS_PER_PAGE);
+            subpaths = (0, import_lodash.default)(2, pages + 1).map((p) => `/${PAGE_PREFIX}${p}`);
+          }
+          if (originalItem) {
+            const prefix = `/people/${originalItem.slug}`;
+            paths.push(prefix, ...subpaths.map((p) => prefix + p));
+          }
+          if (item) {
+            const prefix = `/people/${item.slug}`;
+            paths.push(prefix, ...subpaths.map((p) => prefix + p));
+          }
+          paths.push(
+            ...posts.map(
+              (post) => `/posts/${post.category?.slug ?? ""}/${extractTime(
+                post.publishedAt ?? new Date()
+              ).join("/")}/${post.slug}`
+            )
+          );
+          refreshPaths(paths);
         }
       },
       fields: {
@@ -266,6 +367,20 @@ var lists = {
         operation: {
           ...(0, import_access2.allOperations)(({ session: session2 }) => hasRole(session2, "ADMIN")),
           query: import_access2.allowAll
+        }
+      },
+      hooks: {
+        afterOperation({ item, originalItem }) {
+          const paths = [];
+          if (originalItem) {
+            const prefix = `/${originalItem.slug}`;
+            paths.push(prefix);
+          }
+          if (item) {
+            const prefix = `/${item.slug}`;
+            paths.push(prefix);
+          }
+          refreshPaths(paths);
         }
       },
       fields: {
@@ -373,6 +488,150 @@ var lists = {
             if (operation === "create" && noField || operation === "update" && (fieldRemoved || noField && !hasExistingField))
               addValidationError(`Missing required relationship: ${field}`);
           }
+        },
+        async afterOperation({
+          operation,
+          resolvedData,
+          originalItem,
+          item,
+          context
+        }) {
+          if (operation === "create" && item?.status === "DRAFT" || operation === "update" && item?.status === "DRAFT" && item?.status === originalItem?.status || operation === "delete" && originalItem?.status === "DRAFT") {
+            return;
+          }
+          const paths = ["/", "/posts", "/posts/~all"];
+          for (const it of [originalItem, item]) {
+            if (it?.status !== "PUBLISHED") {
+              continue;
+            }
+            const category = await context.prisma.category.findFirst({
+              select: {
+                id: true,
+                slug: true
+              },
+              where: {
+                id: it.categoryId ?? ""
+              }
+            });
+            paths.push(
+              `/posts/${category?.slug ?? ""}/${extractTime(
+                it.publishedAt ?? new Date()
+              ).join("/")}/${it.slug}`
+            );
+            if (originalItem?.categoryId !== item?.categoryId) {
+              const posts = await context.prisma.post.findMany({
+                select: {
+                  publishedAt: true
+                },
+                where: {
+                  categoryId: it.categoryId,
+                  status: "PUBLISHED"
+                }
+              });
+              const folders = posts.reduce((previous, current) => {
+                const [year, month] = extractTime(
+                  current.publishedAt ?? new Date()
+                );
+                let yearItem = previous.find(
+                  (item2) => item2.year === year && !item2.month
+                );
+                if (!yearItem) {
+                  yearItem = { year, month: "", length: 0 };
+                  previous.push(yearItem);
+                }
+                yearItem.length++;
+                let monthItem = previous.find(
+                  (item2) => item2.year === year && item2.month === month
+                );
+                if (!monthItem) {
+                  monthItem = { year, month, length: 0 };
+                  previous.push(monthItem);
+                }
+                monthItem.length++;
+                return previous;
+              }, []).map(
+                ({ year, month, length }) => [
+                  [year, month].filter(Boolean),
+                  Array.from({ length })
+                ]
+              );
+              const subpaths = [];
+              for (const [folder, posts2] of folders) {
+                const pages = Math.ceil(posts2.length / POSTS_PER_PAGE);
+                const folderPath = folder.filter(Boolean).join("/");
+                subpaths.push(
+                  ...(0, import_lodash.default)(2, pages + 2).map(
+                    (p) => `/${folderPath}/${PAGE_PREFIX}${p}`
+                  )
+                );
+              }
+              paths.push(...subpaths.map((p) => `/posts/${it.slug}${p}`));
+            }
+          }
+          if (operation !== "update" || resolvedData?.tags) {
+            const tags = await context.prisma.tag.findMany({
+              select: {
+                id: true,
+                slug: true
+              },
+              where: {
+                posts: {
+                  some: {
+                    id: item?.id
+                  }
+                }
+              }
+            });
+            for (const tag of tags) {
+              const postCount = await context.prisma.post.count({
+                where: {
+                  tags: {
+                    some: {
+                      id: tag.id
+                    }
+                  },
+                  status: "PUBLISHED"
+                }
+              });
+              const pages = Math.ceil(postCount / POSTS_PER_PAGE);
+              const subpaths = (0, import_lodash.default)(2, pages + 2).map(
+                (p) => `/${PAGE_PREFIX}${p}`
+              );
+              paths.push(...subpaths.map((p) => `/tags/${tag.slug}${p}`));
+            }
+          }
+          if (operation !== "update" || resolvedData?.authors) {
+            const users = await context.prisma.user.findMany({
+              select: {
+                id: true,
+                slug: true
+              },
+              where: {
+                posts: {
+                  some: {
+                    id: item?.id
+                  }
+                }
+              }
+            });
+            for (const user of users) {
+              const postCount = await context.prisma.post.count({
+                where: {
+                  authors: {
+                    some: {
+                      id: user.id
+                    }
+                  },
+                  status: "PUBLISHED"
+                }
+              });
+              const pages = Math.ceil(postCount / POSTS_PER_PAGE);
+              const subpaths = (0, import_lodash.default)(2, pages + 2).map(
+                (p) => `/${PAGE_PREFIX}${p}`
+              );
+              paths.push(...subpaths.map((p) => `/people/${user.slug}${p}`));
+            }
+          }
         }
       },
       fields: {
@@ -456,6 +715,52 @@ var lists = {
           query: import_access2.allowAll
         }
       },
+      hooks: {
+        async afterOperation({ item, originalItem, context }) {
+          const paths = ["/", "/tags"];
+          const posts = await context.prisma.post.findMany({
+            select: {
+              id: true,
+              slug: true,
+              publishedAt: true,
+              category: {
+                select: {
+                  slug: true
+                }
+              }
+            },
+            where: {
+              tags: {
+                some: {
+                  id: (item ?? originalItem).id
+                }
+              },
+              status: "PUBLISHED"
+            }
+          });
+          let subpaths = [];
+          if (posts.length > 0) {
+            const pages = Math.ceil(posts.length / POSTS_PER_PAGE);
+            subpaths = (0, import_lodash.default)(2, pages + 1).map((p) => `/${PAGE_PREFIX}${p}`);
+          }
+          if (originalItem) {
+            const prefix = `/tags/${originalItem.slug}`;
+            paths.push(prefix, ...subpaths.map((p) => prefix + p));
+          }
+          if (item) {
+            const prefix = `/tags/${item.slug}`;
+            paths.push(prefix, ...subpaths.map((p) => prefix + p));
+          }
+          paths.push(
+            ...posts.map(
+              (post) => `/posts/${post.category?.slug ?? ""}/${extractTime(
+                post.publishedAt ?? new Date()
+              ).join("/")}/${post.slug}`
+            )
+          );
+          refreshPaths(paths);
+        }
+      },
       ui: {
         isHidden: true
       },
@@ -486,6 +791,86 @@ var lists = {
           if (operation === "create" && !resolvedData.cover.id || operation === "update" && resolvedData.cover.id === null) {
             addValidationError("Missing required field: cover");
           }
+        },
+        async afterOperation({ item, originalItem, context }) {
+          const paths = ["/", "/posts"];
+          const posts = await context.prisma.post.findMany({
+            select: {
+              id: true,
+              slug: true,
+              publishedAt: true,
+              category: {
+                select: {
+                  slug: true
+                }
+              }
+            },
+            where: {
+              category: {
+                id: (item ?? originalItem).id
+              },
+              status: "PUBLISHED"
+            }
+          });
+          let subpaths = [];
+          if (posts.length > 0) {
+            const pages = Math.ceil(posts.length / POSTS_PER_PAGE);
+            subpaths = (0, import_lodash.default)(2, pages + 1).map((p) => `/${PAGE_PREFIX}${p}`);
+          }
+          const folders = posts.reduce((previous, current) => {
+            const [year, month] = extractTime(
+              current.publishedAt ?? new Date()
+            );
+            let yearItem = previous.find(
+              (item2) => item2.year === year && !item2.month
+            );
+            if (!yearItem) {
+              yearItem = { year, month: "", length: 0 };
+              previous.push(yearItem);
+            }
+            yearItem.length++;
+            let monthItem = previous.find(
+              (item2) => item2.year === year && item2.month === month
+            );
+            if (!monthItem) {
+              monthItem = { year, month, length: 0 };
+              previous.push(monthItem);
+            }
+            monthItem.length++;
+            return previous;
+          }, []).map(
+            ({ year, month, length }) => [
+              [year, month].filter(Boolean),
+              Array.from({ length })
+            ]
+          );
+          for (const [folder, posts2] of folders) {
+            if (posts2.length > 0) {
+              const pages = Math.ceil(posts2.length / POSTS_PER_PAGE);
+              const folderPath = folder.filter(Boolean).join("/");
+              subpaths.push(
+                ...(0, import_lodash.default)(2, pages + 1).map(
+                  (p) => `/${folderPath}/${PAGE_PREFIX}${p}`
+                )
+              );
+            }
+          }
+          if (originalItem) {
+            const prefix = `/posts/${originalItem.slug}`;
+            paths.push(prefix, ...subpaths.map((p) => prefix + p));
+          }
+          if (item) {
+            const prefix = `/posts/${item.slug}`;
+            paths.push(prefix, ...subpaths.map((p) => prefix + p));
+          }
+          paths.push(
+            ...posts.map(
+              (post) => `/posts/${post.category?.slug ?? ""}/${extractTime(
+                post.publishedAt ?? new Date()
+              ).join("/")}/${post.slug}`
+            )
+          );
+          refreshPaths(paths);
         }
       },
       fields: {
