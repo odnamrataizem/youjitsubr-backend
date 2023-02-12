@@ -31,10 +31,13 @@ function hasRole(session: any, ...role: string[]): boolean {
   );
 }
 
-function refreshPaths(paths: string[]) {
+async function refreshPaths(paths: string[]) {
   const baseUrl = process.env.FRONTEND_BASE_URL;
 
   if (!baseUrl) {
+    console.log(
+      'Not refreshing paths: `FRONTEND_BASE_URL` environment variable not configured.',
+    );
     return;
   }
 
@@ -45,13 +48,23 @@ function refreshPaths(paths: string[]) {
     .update(body)
     .digest('hex');
 
-  void fetch(`${baseUrl}/api/revalidate`, {
-    headers: {
-      'x-signature': signature,
-    },
-    body,
-    method: 'POST',
-  });
+  console.log(`Revalidating paths (signature ${signature}):`);
+
+  for (const path of paths) {
+    console.log(`- ${path}`);
+  }
+
+  try {
+    await fetch(`${baseUrl}/api/revalidate`, {
+      headers: {
+        'x-signature': signature,
+      },
+      body,
+      method: 'POST',
+    });
+  } catch (error: unknown) {
+    console.error(error);
+  }
 }
 
 function extractTime(date: Date) {
@@ -197,7 +210,7 @@ export const lists: Lists = {
             ),
           );
 
-          refreshPaths(paths);
+          await refreshPaths(paths);
         },
       },
       fields: {
@@ -260,7 +273,7 @@ export const lists: Lists = {
         },
       },
       hooks: {
-        afterOperation({ item, originalItem }) {
+        async afterOperation({ item, originalItem }) {
           const paths: string[] = [];
 
           if (originalItem) {
@@ -273,7 +286,7 @@ export const lists: Lists = {
             paths.push(prefix);
           }
 
-          refreshPaths(paths);
+          await refreshPaths(paths);
         },
       },
       fields: {
@@ -333,11 +346,6 @@ export const lists: Lists = {
       },
       hooks: {
         resolveInput({ resolvedData, inputData, item }) {
-          console.log(
-            inputData.status ?? item?.status,
-            inputData.publishedAt ?? item?.publishedAt,
-          );
-
           if (
             (inputData.status ?? item?.status) === 'PUBLISHED' &&
             !(inputData.publishedAt ?? item?.publishedAt)
@@ -591,6 +599,8 @@ export const lists: Lists = {
               paths.push(...subpaths.map(p => `/people/${user.slug}${p}`));
             }
           }
+
+          await refreshPaths(paths);
         },
       },
       fields: {
@@ -733,7 +743,7 @@ export const lists: Lists = {
             ),
           );
 
-          refreshPaths(paths);
+          await refreshPaths(paths);
         },
       },
       ui: {
@@ -866,7 +876,7 @@ export const lists: Lists = {
             ),
           );
 
-          refreshPaths(paths);
+          await refreshPaths(paths);
         },
       },
       fields: {

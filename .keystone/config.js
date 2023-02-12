@@ -187,21 +187,32 @@ function hasRole(session2, ...role) {
   const roles = session2?.data.roles ?? [];
   return session2?.data.active && (roles.includes("SUPER") || roles.some((r) => role.includes(r)));
 }
-function refreshPaths(paths) {
+async function refreshPaths(paths) {
   const baseUrl = process.env.FRONTEND_BASE_URL;
   if (!baseUrl) {
+    console.log(
+      "Not refreshing paths: `FRONTEND_BASE_URL` environment variable not configured."
+    );
     return;
   }
   paths = [...new Set(paths)];
   const body = JSON.stringify(paths);
   const signature = (0, import_node_crypto2.createHmac)("sha256", process.env.WEBHOOK_SECRET ?? "").update(body).digest("hex");
-  void (0, import_node_fetch.default)(`${baseUrl}/api/revalidate`, {
-    headers: {
-      "x-signature": signature
-    },
-    body,
-    method: "POST"
-  });
+  console.log(`Revalidating paths (signature ${signature}):`);
+  for (const path of paths) {
+    console.log(`- ${path}`);
+  }
+  try {
+    await (0, import_node_fetch.default)(`${baseUrl}/api/revalidate`, {
+      headers: {
+        "x-signature": signature
+      },
+      body,
+      method: "POST"
+    });
+  } catch (error) {
+    console.error(error);
+  }
 }
 function extractTime(date) {
   return [
@@ -312,7 +323,7 @@ var lists = {
               ).join("/")}/${post.slug}`
             )
           );
-          refreshPaths(paths);
+          await refreshPaths(paths);
         }
       },
       fields: {
@@ -375,7 +386,7 @@ var lists = {
         }
       },
       hooks: {
-        afterOperation({ item, originalItem }) {
+        async afterOperation({ item, originalItem }) {
           const paths = [];
           if (originalItem) {
             const prefix = `/${originalItem.slug}`;
@@ -385,7 +396,7 @@ var lists = {
             const prefix = `/${item.slug}`;
             paths.push(prefix);
           }
-          refreshPaths(paths);
+          await refreshPaths(paths);
         }
       },
       fields: {
@@ -439,10 +450,6 @@ var lists = {
       },
       hooks: {
         resolveInput({ resolvedData, inputData, item }) {
-          console.log(
-            inputData.status ?? item?.status,
-            inputData.publishedAt ?? item?.publishedAt
-          );
           if ((inputData.status ?? item?.status) === "PUBLISHED" && !(inputData.publishedAt ?? item?.publishedAt)) {
             resolvedData.publishedAt = new Date();
           }
@@ -637,6 +644,7 @@ var lists = {
               paths.push(...subpaths.map((p) => `/people/${user.slug}${p}`));
             }
           }
+          await refreshPaths(paths);
         }
       },
       fields: {
@@ -763,7 +771,7 @@ var lists = {
               ).join("/")}/${post.slug}`
             )
           );
-          refreshPaths(paths);
+          await refreshPaths(paths);
         }
       },
       ui: {
@@ -875,7 +883,7 @@ var lists = {
               ).join("/")}/${post.slug}`
             )
           );
-          refreshPaths(paths);
+          await refreshPaths(paths);
         }
       },
       fields: {
