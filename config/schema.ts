@@ -466,68 +466,68 @@ export const lists: Lists = {
               ).join('/')}/${it.slug}`,
             );
 
-            if (originalItem?.categoryId !== item?.categoryId) {
-              // eslint-disable-next-line no-await-in-loop
-              const posts = await context.prisma.post.findMany({
-                select: {
-                  publishedAt: true,
-                },
-                where: {
-                  categoryId: it.categoryId,
-                  status: 'PUBLISHED',
-                },
-              });
+            // eslint-disable-next-line no-await-in-loop
+            const posts = await context.prisma.post.findMany({
+              select: {
+                publishedAt: true,
+              },
+              where: {
+                categoryId: it.categoryId,
+                status: 'PUBLISHED',
+              },
+            });
 
-              const folders = posts
-                // eslint-disable-next-line unicorn/no-array-reduce
-                .reduce<TimeFolder[]>((previous, current) => {
-                  const [year, month] = extractTime(
-                    current.publishedAt ?? new Date(),
-                  );
-
-                  let yearItem = previous.find(
-                    item => item.year === year && !item.month,
-                  );
-                  if (!yearItem) {
-                    yearItem = { year, month: '', length: 0 };
-                    previous.push(yearItem);
-                  }
-
-                  yearItem.length++;
-
-                  let monthItem = previous.find(
-                    item => item.year === year && item.month === month,
-                  );
-                  if (!monthItem) {
-                    monthItem = { year, month, length: 0 };
-                    previous.push(monthItem);
-                  }
-
-                  monthItem.length++;
-
-                  return previous;
-                }, [])
-                .map(
-                  ({ year, month, length }) =>
-                    [
-                      [year, month].filter(Boolean),
-                      Array.from({ length }),
-                    ] as const,
+            const folders = posts
+              // eslint-disable-next-line unicorn/no-array-reduce
+              .reduce<TimeFolder[]>((previous, current) => {
+                const [year, month] = extractTime(
+                  current.publishedAt ?? new Date(),
                 );
 
-              const subpaths: string[] = [];
-              for (const [folder, posts] of folders) {
-                const pages = Math.ceil(posts.length / POSTS_PER_PAGE);
-                const folderPath = folder.filter(Boolean).join('/');
-                subpaths.push(
-                  ...range(2, pages + 2).map(
-                    p => `/${folderPath}/${PAGE_PREFIX}${p}`,
-                  ),
+                let yearItem = previous.find(
+                  item => item.year === year && !item.month,
                 );
-              }
+                if (!yearItem) {
+                  yearItem = { year, month: '', length: 0 };
+                  previous.push(yearItem);
+                }
 
-              paths.push(...subpaths.map(p => `/posts/${it.slug}${p}`));
+                yearItem.length++;
+
+                let monthItem = previous.find(
+                  item => item.year === year && item.month === month,
+                );
+                if (!monthItem) {
+                  monthItem = { year, month, length: 0 };
+                  previous.push(monthItem);
+                }
+
+                monthItem.length++;
+
+                return previous;
+              }, [])
+              .map(
+                ({ year, month, length }) =>
+                  [
+                    [year, month].filter(Boolean),
+                    Array.from({ length }),
+                  ] as const,
+              );
+
+            const subpaths: string[] = [];
+            for (const [folder, posts] of folders) {
+              const pages = Math.ceil(posts.length / POSTS_PER_PAGE);
+              const folderPath = folder.filter(Boolean).join('/');
+
+              const prefix = `/${folderPath}`;
+              subpaths.push(
+                prefix,
+                ...range(2, pages + 2).map(p => `${prefix}/${PAGE_PREFIX}${p}`),
+              );
             }
+
+            const prefix = `/posts/${category?.slug ?? ''}`;
+            paths.push(prefix, ...subpaths.map(p => prefix + p));
           }
 
           if (operation !== 'update' || resolvedData?.tags) {
@@ -849,10 +849,10 @@ export const lists: Lists = {
             if (posts.length > 0) {
               const pages = Math.ceil(posts.length / POSTS_PER_PAGE);
               const folderPath = folder.filter(Boolean).join('/');
+              const prefix = `/${folderPath}`;
               subpaths.push(
-                ...range(2, pages + 1).map(
-                  p => `/${folderPath}/${PAGE_PREFIX}${p}`,
-                ),
+                prefix,
+                ...range(2, pages + 1).map(p => `${prefix}/${PAGE_PREFIX}${p}`),
               );
             }
           }

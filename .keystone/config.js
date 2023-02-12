@@ -530,55 +530,54 @@ var lists = {
                 it.publishedAt ?? new Date()
               ).join("/")}/${it.slug}`
             );
-            if (originalItem?.categoryId !== item?.categoryId) {
-              const posts = await context.prisma.post.findMany({
-                select: {
-                  publishedAt: true
-                },
-                where: {
-                  categoryId: it.categoryId,
-                  status: "PUBLISHED"
-                }
-              });
-              const folders = posts.reduce((previous, current) => {
-                const [year, month] = extractTime(
-                  current.publishedAt ?? new Date()
-                );
-                let yearItem = previous.find(
-                  (item2) => item2.year === year && !item2.month
-                );
-                if (!yearItem) {
-                  yearItem = { year, month: "", length: 0 };
-                  previous.push(yearItem);
-                }
-                yearItem.length++;
-                let monthItem = previous.find(
-                  (item2) => item2.year === year && item2.month === month
-                );
-                if (!monthItem) {
-                  monthItem = { year, month, length: 0 };
-                  previous.push(monthItem);
-                }
-                monthItem.length++;
-                return previous;
-              }, []).map(
-                ({ year, month, length }) => [
-                  [year, month].filter(Boolean),
-                  Array.from({ length })
-                ]
-              );
-              const subpaths = [];
-              for (const [folder, posts2] of folders) {
-                const pages = Math.ceil(posts2.length / POSTS_PER_PAGE);
-                const folderPath = folder.filter(Boolean).join("/");
-                subpaths.push(
-                  ...(0, import_lodash.default)(2, pages + 2).map(
-                    (p) => `/${folderPath}/${PAGE_PREFIX}${p}`
-                  )
-                );
+            const posts = await context.prisma.post.findMany({
+              select: {
+                publishedAt: true
+              },
+              where: {
+                categoryId: it.categoryId,
+                status: "PUBLISHED"
               }
-              paths.push(...subpaths.map((p) => `/posts/${it.slug}${p}`));
+            });
+            const folders = posts.reduce((previous, current) => {
+              const [year, month] = extractTime(
+                current.publishedAt ?? new Date()
+              );
+              let yearItem = previous.find(
+                (item2) => item2.year === year && !item2.month
+              );
+              if (!yearItem) {
+                yearItem = { year, month: "", length: 0 };
+                previous.push(yearItem);
+              }
+              yearItem.length++;
+              let monthItem = previous.find(
+                (item2) => item2.year === year && item2.month === month
+              );
+              if (!monthItem) {
+                monthItem = { year, month, length: 0 };
+                previous.push(monthItem);
+              }
+              monthItem.length++;
+              return previous;
+            }, []).map(
+              ({ year, month, length }) => [
+                [year, month].filter(Boolean),
+                Array.from({ length })
+              ]
+            );
+            const subpaths = [];
+            for (const [folder, posts2] of folders) {
+              const pages = Math.ceil(posts2.length / POSTS_PER_PAGE);
+              const folderPath = folder.filter(Boolean).join("/");
+              const prefix2 = `/${folderPath}`;
+              subpaths.push(
+                prefix2,
+                ...(0, import_lodash.default)(2, pages + 2).map((p) => `${prefix2}/${PAGE_PREFIX}${p}`)
+              );
             }
+            const prefix = `/posts/${category?.slug ?? ""}`;
+            paths.push(prefix, ...subpaths.map((p) => prefix + p));
           }
           if (operation !== "update" || resolvedData?.tags) {
             const tags = await context.prisma.tag.findMany({
@@ -861,10 +860,10 @@ var lists = {
             if (posts2.length > 0) {
               const pages = Math.ceil(posts2.length / POSTS_PER_PAGE);
               const folderPath = folder.filter(Boolean).join("/");
+              const prefix = `/${folderPath}`;
               subpaths.push(
-                ...(0, import_lodash.default)(2, pages + 1).map(
-                  (p) => `/${folderPath}/${PAGE_PREFIX}${p}`
-                )
+                prefix,
+                ...(0, import_lodash.default)(2, pages + 1).map((p) => `${prefix}/${PAGE_PREFIX}${p}`)
               );
             }
           }
