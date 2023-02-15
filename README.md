@@ -13,13 +13,13 @@ you haven't yet. You're also going to need [Node.js][3], since Yarn uses it.
 [2]: https://classic.yarnpkg.com/
 [3]: https://nodejs.org/
 
-Then, run `yarn install` to fetch all the dependencies.
+Then, set up the environment: copy `.env.example` to `.env` and start filling it
+with suitable values. You may wish to contact a fellow developer for
+production values.
 
-Also, don't forget to set up the environment: copy `.env.example` to `.env` and
-start filling it with suitable values. You may wish to contact a fellow
-developer for production values.
+Run `yarn install` afterwards to fetch all the dependencies.
 
-Once you set up your environment, run `yarn dev` and work your magic.
+Now you're ready to run `yarn dev` and work your magic!
 
 ## Deploying to production
 
