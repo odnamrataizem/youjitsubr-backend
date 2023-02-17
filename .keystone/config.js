@@ -187,7 +187,11 @@ var oembed_default = OEmbed;
 // config/component-blocks.tsx
 oembed_default.register();
 function isImage(url2) {
-  return /\.(?:gif|jpe?g|png|webp)$/.test(new URL(url2).pathname);
+  try {
+    return /\.(?:gif|jpe?g|png|webp)$/.test(new URL(url2).pathname);
+  } catch {
+    return false;
+  }
 }
 function Embed({ url: url2, alt, data }) {
   const element = (0, import_react.useRef)(null);
