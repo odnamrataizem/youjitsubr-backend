@@ -29,7 +29,11 @@ __export(keystone_exports, {
   default: () => keystone_default
 });
 module.exports = __toCommonJS(keystone_exports);
+var import_node_path = require("node:path");
+var import_node_stream = require("node:stream");
+var import_oembed_extractor = require("@extractus/oembed-extractor");
 var import_core2 = require("@keystone-6/core");
+var import_node_fetch2 = __toESM(require("node-fetch"));
 
 // config/_bootstrap-env.ts
 var import_dotenv = __toESM(require("dotenv"));
@@ -72,6 +76,276 @@ var import_access = require("@keystone-6/core/access");
 var import_fields = require("@keystone-6/core/fields");
 var import_fields_document = require("@keystone-6/fields-document");
 var import_transliteration = require("transliteration");
+
+// config/component-blocks.tsx
+var import_component_blocks = require("@keystone-6/fields-document/component-blocks");
+var import_primitives = require("@keystone-6/fields-document/primitives");
+var import_ImageIcon = require("@keystone-ui/icons/icons/ImageIcon");
+var import_Trash2Icon = require("@keystone-ui/icons/icons/Trash2Icon");
+var import_TypeIcon = require("@keystone-ui/icons/icons/TypeIcon");
+var import_tooltip = require("@keystone-ui/tooltip");
+var import_react = __toESM(require("react"));
+
+// config/oembed.ts
+var OEmbed = (() => {
+  if (!globalThis.HTMLElement) {
+    return {
+      register() {
+      }
+    };
+  }
+  return class OEmbed2 extends HTMLElement {
+    static register() {
+      customElements.define("o-embed", OEmbed2);
+    }
+    static get observedAttributes() {
+      return ["url"];
+    }
+    #root;
+    #resizeObserver;
+    #ready = false;
+    #isDark = document.documentElement.classList.contains("dark");
+    constructor() {
+      super();
+      this.#root = this.attachShadow({ mode: "closed" });
+      this.#resizeObserver = new ResizeObserver((entries) => {
+        const { height } = entries[0].contentRect;
+        iframe.style.height = `${height}px`;
+        iframe.style.aspectRatio = "";
+      });
+      const iframe = document.createElement("iframe");
+      iframe.style.width = "100%";
+      iframe.style.aspectRatio = "16 / 9";
+      iframe.style.border = "0";
+      iframe.style.verticalAlign = "top";
+      iframe.srcdoc = `<!DOCTYPE html><html class="${this.#isDark ? "dark" : ""}" lang="pt-BR"><style>html{font-size:125%;color:#000}html.dark{color:#fff}body{margin:0;padding:0;display:flex;flex-direction:column;align-items:center}iframe,img{max-width:100%}.filler{width:100%;aspect-ratio:16 / 9;display:flex;justify-content:center;align-items:center}</style><body><div class="filler">...</div></body></html>`;
+      this.#root.append(iframe);
+      setTimeout(() => {
+        const callback = () => {
+          if (iframe.contentDocument?.readyState !== "complete") {
+            return;
+          }
+          this.#resizeObserver.observe(iframe.contentDocument.documentElement);
+          this.#ready = true;
+          iframe.contentDocument?.removeEventListener(
+            "readystatechange",
+            callback
+          );
+          void this.updateUrl();
+        };
+        if (iframe.contentDocument?.readyState === "complete") {
+          callback();
+          return;
+        }
+        iframe.contentDocument?.addEventListener("readystatechange", callback);
+      }, 50);
+    }
+    attributeChangedCallback() {
+      void this.updateUrl();
+    }
+    async updateUrl() {
+      if (!this.#ready) {
+        return;
+      }
+      const contents = this.#root.querySelector("iframe")?.contentDocument?.body;
+      if (!contents) {
+        return;
+      }
+      const url2 = encodeURIComponent(this.getAttribute("url") ?? "");
+      const response = await fetch(`/oembed-proxy?url=${url2}`);
+      const data = await response.json();
+      const event = new CustomEvent("data", { detail: data });
+      this.dispatchEvent(event);
+      contents.innerHTML = data.html;
+      if (data.type === "video") {
+        for (const iframe of contents.querySelectorAll("iframe")) {
+          if (iframe.width === "100%") {
+            continue;
+          }
+          iframe.style.width = "100%";
+          iframe.style.height = "auto";
+          iframe.style.aspectRatio = `${iframe.width} / ${iframe.height}`;
+        }
+      }
+      for (const image2 of contents.querySelectorAll("img")) {
+        image2.style.height = "auto";
+        image2.style.aspectRatio = `${image2.width} / ${image2.height}`;
+      }
+      for (const script of contents.querySelectorAll("script")) {
+        const newScript = document.createElement("script");
+        for (const attribute of script.attributes) {
+          newScript.setAttribute(attribute.name, attribute.value);
+        }
+        newScript.append(document.createTextNode(script.innerHTML));
+        script.parentNode?.replaceChild(newScript, script);
+      }
+    }
+  };
+})();
+var oembed_default = OEmbed;
+
+// config/component-blocks.tsx
+oembed_default.register();
+function isImage(url2) {
+  return /\.(?:gif|jpe?g|png|webp)$/.test(new URL(url2).pathname);
+}
+function Embed({ url: url2, alt, data }) {
+  const element = (0, import_react.useRef)(null);
+  const [image2, setImage] = (0, import_react.useState)(null);
+  (0, import_react.useEffect)(() => {
+    function onData(event) {
+      data.onChange(JSON.stringify(event.detail));
+    }
+    setImage(null);
+    if (isImage(url2)) {
+      fetch(`/fetch-image?url=${url2}`, { method: "POST" }).then(async (response) => {
+        if (!response.ok) {
+          return;
+        }
+        const detail = await response.json();
+        setImage(
+          /* @__PURE__ */ import_react.default.createElement(
+            "img",
+            {
+              alt,
+              src: detail.src,
+              width: detail.width,
+              height: detail.height,
+              style: {
+                maxWidth: "100%",
+                height: "auto",
+                margin: "0 auto",
+                display: "block",
+                aspectRatio: `${detail.width} / ${detail.height}`
+              }
+            }
+          )
+        );
+        data.onChange(JSON.stringify({ ...detail, type: "uploaded-image" }));
+      }).catch((error) => {
+        console.error(error);
+      });
+    }
+    element.current?.addEventListener("data", onData);
+    return () => {
+      element.current?.removeEventListener("data", onData);
+    };
+  }, [url2]);
+  if (url2 === "") {
+    return /* @__PURE__ */ import_react.default.createElement(
+      "div",
+      {
+        style: {
+          aspectRatio: "16 / 9",
+          width: "100%",
+          border: "5px dashed",
+          opacity: "0.25",
+          borderRadius: "5px"
+        }
+      }
+    );
+  }
+  return isImage(url2) ? /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, image2 ?? /* @__PURE__ */ import_react.default.createElement(
+    "img",
+    {
+      src: url2,
+      alt,
+      style: {
+        maxWidth: "100%",
+        height: "auto",
+        margin: "0 auto",
+        display: "block"
+      }
+    }
+  )) : /* @__PURE__ */ import_react.default.createElement("o-embed", { ref: element, url: url2 });
+}
+var componentBlocks = {
+  embed: (0, import_component_blocks.component)({
+    chromeless: true,
+    preview({ fields: fields2 }) {
+      return /* @__PURE__ */ import_react.default.createElement("figure", null, /* @__PURE__ */ import_react.default.createElement(import_component_blocks.NotEditable, null, /* @__PURE__ */ import_react.default.createElement(
+        "div",
+        {
+          style: {
+            margin: "0 auto",
+            maxWidth: "500px",
+            pointerEvents: "none"
+          }
+        },
+        /* @__PURE__ */ import_react.default.createElement(
+          Embed,
+          {
+            url: fields2.src.value,
+            alt: fields2.alt.value,
+            data: fields2.data
+          }
+        )
+      )), /* @__PURE__ */ import_react.default.createElement("figcaption", { style: { textAlign: "center" } }, fields2.caption.element));
+    },
+    label: "Embed",
+    schema: {
+      src: import_component_blocks.fields.text({
+        label: "Embed URL",
+        defaultValue: ""
+      }),
+      data: import_component_blocks.fields.text({
+        label: "Embed data",
+        defaultValue: ""
+      }),
+      alt: import_component_blocks.fields.text({
+        label: "Alt text",
+        defaultValue: ""
+      }),
+      caption: import_component_blocks.fields.child({ kind: "inline", placeholder: "Enter text..." })
+    },
+    toolbar({ props, onRemove }) {
+      return /* @__PURE__ */ import_react.default.createElement(import_primitives.ToolbarGroup, null, /* @__PURE__ */ import_react.default.createElement(import_tooltip.Tooltip, { content: "Embed URL", weight: "subtle" }, (attributes) => /* @__PURE__ */ import_react.default.createElement(
+        import_primitives.ToolbarButton,
+        {
+          onMouseDown: () => {
+            const url2 = prompt("Enter URL:", props.fields.src.value);
+            if (url2 === null) {
+              return;
+            }
+            let urlObject;
+            try {
+              urlObject = new URL(url2 ?? "");
+            } catch {
+              alert("Invalid URL.");
+              return;
+            }
+            props.fields.src.onChange(urlObject.href);
+          },
+          ...attributes
+        },
+        /* @__PURE__ */ import_react.default.createElement(import_ImageIcon.ImageIcon, { size: "small" })
+      )), /* @__PURE__ */ import_react.default.createElement(import_tooltip.Tooltip, { content: "Alt text", weight: "subtle" }, (attributes) => /* @__PURE__ */ import_react.default.createElement(
+        import_primitives.ToolbarButton,
+        {
+          onMouseDown: () => {
+            const text3 = prompt("Enter text:", props.fields.alt.value);
+            if (!text3) {
+              return;
+            }
+            props.fields.alt.onChange(text3);
+          },
+          ...attributes
+        },
+        /* @__PURE__ */ import_react.default.createElement(import_TypeIcon.TypeIcon, { size: "small" })
+      )), /* @__PURE__ */ import_react.default.createElement(import_primitives.ToolbarSeparator, null), /* @__PURE__ */ import_react.default.createElement(import_tooltip.Tooltip, { content: "Remove", weight: "subtle" }, (attributes) => /* @__PURE__ */ import_react.default.createElement(
+        import_primitives.ToolbarButton,
+        {
+          variant: "destructive",
+          onMouseDown: onRemove,
+          ...attributes
+        },
+        /* @__PURE__ */ import_react.default.createElement(import_Trash2Icon.Trash2Icon, { size: "small" })
+      )));
+    }
+  })
+};
+
+// config/fields.ts
 var createdAt = (0, import_fields.timestamp)({
   defaultValue: {
     kind: "now"
@@ -117,6 +391,10 @@ var picture = (0, import_fields.image)({
   storage: "myLocal"
 });
 var rich = (0, import_fields_document.document)({
+  ui: {
+    views: "./config/component-blocks"
+  },
+  componentBlocks,
   formatting: {
     inlineMarks: {
       bold: true,
@@ -143,10 +421,10 @@ var rich = (0, import_fields_document.document)({
   dividers: true
 });
 function withSlug(config2) {
-  const fields = Object.entries(config2.fields);
-  for (const [index, [fieldName]] of fields.entries()) {
+  const fields2 = Object.entries(config2.fields);
+  for (const [index, [fieldName]] of fields2.entries()) {
     if (fieldName === "name" || fieldName === "title") {
-      fields.splice(index + 1, 0, [
+      fields2.splice(index + 1, 0, [
         "slug",
         (0, import_fields.text)({
           isIndexed: "unique",
@@ -158,7 +436,7 @@ function withSlug(config2) {
       break;
     }
   }
-  config2.fields = Object.fromEntries(fields);
+  config2.fields = Object.fromEntries(fields2);
   if (!("slug" in config2.fields)) {
     return config2;
   }
@@ -952,6 +1230,73 @@ var keystone_default = withAuth(
     ui: {
       isAccessAllowed({ session: session2 }) {
         return session2?.data?.active ?? false;
+      }
+    },
+    server: {
+      extendExpressApp(app, context) {
+        app.post("/fetch-image", async (request, response) => {
+          if (!context.session) {
+            response.status(403).send();
+            return;
+          }
+          let url2;
+          try {
+            url2 = new URL(request.query.url);
+          } catch (error) {
+            console.error(error);
+            response.status(400).send();
+            return;
+          }
+          const fileResponse = await (0, import_node_fetch2.default)(url2.href);
+          if (!fileResponse.ok) {
+            response.status(500).send();
+            return;
+          }
+          try {
+            const chunks = [];
+            for await (const chunk of fileResponse.body) {
+              chunks.push(chunk);
+            }
+            const fileContents = import_node_stream.Readable.from(Buffer.concat(chunks));
+            const imageStorage = context.images("myLocal");
+            const result = await imageStorage.getDataFromStream(
+              fileContents,
+              (0, import_node_path.basename)(url2.pathname)
+            );
+            response.send({
+              ...result,
+              src: await imageStorage.getUrl(result.id, result.extension)
+            });
+          } catch (error) {
+            console.error(error);
+            response.status(500).send(error);
+          }
+        });
+        app.get("/oembed-proxy", async (request, response) => {
+          if (!context.session) {
+            response.status(403).send();
+            return;
+          }
+          let url2;
+          try {
+            url2 = new URL(request.query.url);
+          } catch (error) {
+            console.error(error);
+            response.status(400).send();
+            return;
+          }
+          try {
+            response.send(
+              await (0, import_oembed_extractor.extract)(url2.href, {
+                maxwidth: 1e3,
+                maxheight: 1e3
+              })
+            );
+          } catch (error) {
+            console.error(error);
+            response.status(500).send(error);
+          }
+        });
       }
     }
   })

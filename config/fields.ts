@@ -5,6 +5,8 @@ import type { BaseListTypeInfo } from '@keystone-6/core/types';
 import { document } from '@keystone-6/fields-document';
 import { slugify } from 'transliteration';
 
+import { componentBlocks } from './component-blocks';
+
 export const createdAt = timestamp({
   defaultValue: {
     kind: 'now',
@@ -53,6 +55,10 @@ export const picture = image({
 });
 
 export const rich = document({
+  ui: {
+    views: './config/component-blocks',
+  },
+  componentBlocks,
   formatting: {
     inlineMarks: {
       bold: true,
