@@ -26,7 +26,11 @@ type EmbedProps = {
 };
 
 function isImage(url: string) {
-  return /\.(?:gif|jpe?g|png|webp)$/.test(new URL(url).pathname);
+  try {
+    return /\.(?:gif|jpe?g|png|webp)$/.test(new URL(url).pathname);
+  } catch {
+    return false;
+  }
 }
 
 function Embed({ url, alt, data }: EmbedProps) {
