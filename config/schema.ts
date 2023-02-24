@@ -140,6 +140,7 @@ export const lists: Lists = {
           });
 
           if (
+            resolvedData.roles &&
             operation === 'update' &&
             !(resolvedData.roles as string[]).includes('SUPER') &&
             supers.length === 1 &&

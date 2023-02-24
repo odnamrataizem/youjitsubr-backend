@@ -547,7 +547,7 @@ var lists = {
               }
             }
           });
-          if (operation === "update" && !resolvedData.roles.includes("SUPER") && supers.length === 1 && supers[0].id === resolvedData.id) {
+          if (resolvedData.roles && operation === "update" && !resolvedData.roles.includes("SUPER") && supers.length === 1 && supers[0].id === resolvedData.id) {
             addValidationError("This is the last Super user!");
           }
         },
