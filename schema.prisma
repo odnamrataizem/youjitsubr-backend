@@ -34,6 +34,7 @@ model Page {
   id              String   @id @default(cuid())
   title           String   @default("")
   slug            String   @unique @default("")
+  lead            String   @default("")
   content         Json     @default("[{\"type\":\"paragraph\",\"children\":[{\"text\":\"\"}]}]")
   cover_filesize  Int?
   cover_extension String?

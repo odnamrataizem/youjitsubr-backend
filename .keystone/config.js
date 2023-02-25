@@ -668,6 +668,11 @@ var lists = {
         }
       },
       hooks: {
+        validateInput({ operation, resolvedData, addValidationError }) {
+          if (operation === "create" && !resolvedData.cover.id || operation === "update" && resolvedData.cover.id === null) {
+            addValidationError("Missing required field: cover");
+          }
+        },
         async afterOperation({ item, originalItem }) {
           const paths = [];
           if (originalItem) {
@@ -683,6 +688,11 @@ var lists = {
       },
       fields: {
         title: (0, import_fields2.text)({
+          validation: {
+            isRequired: true
+          }
+        }),
+        lead: (0, import_fields2.text)({
           validation: {
             isRequired: true
           }

@@ -274,6 +274,14 @@ export const lists: Lists = {
         },
       },
       hooks: {
+        validateInput({ operation, resolvedData, addValidationError }) {
+          if (
+            (operation === 'create' && !resolvedData.cover.id) ||
+            (operation === 'update' && resolvedData.cover.id === null)
+          ) {
+            addValidationError('Missing required field: cover');
+          }
+        },
         async afterOperation({ item, originalItem }) {
           const paths: string[] = [];
 
@@ -292,6 +300,11 @@ export const lists: Lists = {
       },
       fields: {
         title: text({
+          validation: {
+            isRequired: true,
+          },
+        }),
+        lead: text({
           validation: {
             isRequired: true,
           },

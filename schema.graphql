@@ -202,6 +202,7 @@ type Page {
   id: ID!
   title: String
   slug: String
+  lead: String
   content: Page_content_Document
   cover: ImageFieldOutput
   weight: Int
@@ -225,6 +226,7 @@ input PageWhereInput {
   id: IDFilter
   title: StringFilter
   slug: StringFilter
+  lead: StringFilter
   weight: IntFilter
   createdAt: DateTimeFilter
   updatedAt: DateTimeFilter
@@ -245,6 +247,7 @@ input PageOrderByInput {
   id: OrderDirection
   title: OrderDirection
   slug: OrderDirection
+  lead: OrderDirection
   weight: OrderDirection
   createdAt: OrderDirection
   updatedAt: OrderDirection
@@ -253,6 +256,7 @@ input PageOrderByInput {
 input PageUpdateInput {
   title: String
   slug: String
+  lead: String
   content: JSON
   cover: ImageFieldInput
   weight: Int
@@ -268,6 +272,7 @@ input PageUpdateArgs {
 input PageCreateInput {
   title: String
   slug: String
+  lead: String
   content: JSON
   cover: ImageFieldInput
   weight: Int
