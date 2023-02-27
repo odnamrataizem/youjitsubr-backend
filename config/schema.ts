@@ -102,8 +102,9 @@ export const lists: Lists = {
           delete: ({ session }) => hasRole(session, 'ADMIN'),
         },
         item: {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          update: ({ session, item }) => item.id === session?.data.id,
+          update: ({ session, item }) =>
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            item.id === session?.data.id || hasRole(session, 'SUPER'),
         },
       },
       hooks: {

@@ -521,7 +521,7 @@ var lists = {
           delete: ({ session: session2 }) => hasRole(session2, "ADMIN")
         },
         item: {
-          update: ({ session: session2, item }) => item.id === session2?.data.id
+          update: ({ session: session2, item }) => item.id === session2?.data.id || hasRole(session2, "SUPER")
         }
       },
       hooks: {
