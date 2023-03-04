@@ -18,6 +18,10 @@ var __copyProps = (to, from, except, desc) => {
   return to;
 };
 var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
   isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
   mod
 ));
@@ -60,6 +64,7 @@ var { withAuth } = (0, import_auth.createAuth)({
 var sessionMaxAge = 2592e3;
 var session = (0, import_session.statelessSessions)({
   maxAge: sessionMaxAge,
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   secret: sessionSecret
 });
 
@@ -220,6 +225,7 @@ function Embed({ url: url2, alt, data }) {
                 height: "auto",
                 margin: "0 auto",
                 display: "block",
+                // eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
                 aspectRatio: `${detail.width} / ${detail.height}`
               }
             }
@@ -261,7 +267,10 @@ function Embed({ url: url2, alt, data }) {
         display: "block"
       }
     }
-  )) : /* @__PURE__ */ import_react.default.createElement("o-embed", { ref: element, url: url2 });
+  )) : (
+    // @ts-expect-error: web component
+    /* @__PURE__ */ import_react.default.createElement("o-embed", { ref: element, url: url2 })
+  );
 }
 var componentBlocks = {
   embed: (0, import_component_blocks.component)({
@@ -467,7 +476,10 @@ function withSlug(config2) {
 // config/schema.ts
 function hasRole(session2, ...role) {
   const roles = session2?.data.roles ?? [];
-  return session2?.data.active && (roles.includes("SUPER") || roles.some((r) => role.includes(r)));
+  return (
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    session2?.data.active && (roles.includes("SUPER") || roles.some((r) => role.includes(r)))
+  );
 }
 async function refreshPaths(paths) {
   const baseUrl = process.env.FRONTEND_BASE_URL;
@@ -521,7 +533,10 @@ var lists = {
           delete: ({ session: session2 }) => hasRole(session2, "ADMIN")
         },
         item: {
-          update: ({ session: session2, item }) => item.id === session2?.data.id || hasRole(session2, "SUPER")
+          update: ({ session: session2, item }) => (
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            item.id === session2?.data.id || hasRole(session2, "SUPER")
+          )
         }
       },
       hooks: {
@@ -601,7 +616,7 @@ var lists = {
           paths.push(
             ...posts.map(
               (post) => `/posts/${post.category?.slug ?? ""}/${extractTime(
-                post.publishedAt ?? new Date()
+                post.publishedAt ?? /* @__PURE__ */ new Date()
               ).join("/")}/${post.slug}`
             )
           );
@@ -736,14 +751,17 @@ var lists = {
                 }
               }
             });
-            return query?.authors.some((item2) => item2.id === session2?.data.id) ?? false;
+            return (
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+              query?.authors.some((item2) => item2.id === session2?.data.id) ?? false
+            );
           }
         }
       },
       hooks: {
         resolveInput({ resolvedData, inputData, item }) {
           if ((inputData.status ?? item?.status) === "PUBLISHED" && !(inputData.publishedAt ?? item?.publishedAt)) {
-            resolvedData.publishedAt = new Date();
+            resolvedData.publishedAt = /* @__PURE__ */ new Date();
           }
           return resolvedData;
         },
@@ -762,18 +780,21 @@ var lists = {
               addValidationError(`Missing required relationship: ${field}`);
               continue;
             }
-            const query = await context.prisma.post.findFirst({
-              where: {
-                id: { equals: item?.id }
-              },
-              select: {
-                _count: {
-                  select: {
-                    [field]: true
+            const query = (
+              // eslint-disable-next-line no-await-in-loop
+              await context.prisma.post.findFirst({
+                where: {
+                  id: { equals: item?.id }
+                },
+                select: {
+                  _count: {
+                    select: {
+                      [field]: true
+                    }
                   }
                 }
-              }
-            });
+              })
+            );
             const currentCount = query?._count?.[field] || 0;
             const deletedCount = resolvedData?.[field]?.disconnect?.length || 0;
             if (currentCount && currentCount === deletedCount) {
@@ -781,18 +802,22 @@ var lists = {
             }
           }
           for (const field of ["category"]) {
-            const hasExistingField = await context.prisma.post.count({
-              where: {
-                id: { equals: item?.id },
-                [field]: { isNot: null }
-              }
-            }) > 0;
+            const hasExistingField = (
+              // eslint-disable-next-line no-await-in-loop
+              await context.prisma.post.count({
+                where: {
+                  id: { equals: item?.id },
+                  [field]: { isNot: null }
+                }
+              }) > 0
+            );
             const noField = !resolvedData[field];
             const fieldRemoved = resolvedData[field]?.disconnect;
             if (operation === "create" && noField || operation === "update" && (fieldRemoved || noField && !hasExistingField))
               addValidationError(`Missing required relationship: ${field}`);
           }
         },
+        // eslint-disable-next-line complexity
         async afterOperation({
           operation,
           resolvedData,
@@ -819,7 +844,7 @@ var lists = {
             });
             paths.push(
               `/posts/${category?.slug ?? ""}/${extractTime(
-                it.publishedAt ?? new Date()
+                it.publishedAt ?? /* @__PURE__ */ new Date()
               ).join("/")}/${it.slug}`
             );
             const posts = await context.prisma.post.findMany({
@@ -833,7 +858,7 @@ var lists = {
             });
             const folders = posts.reduce((previous, current) => {
               const [year, month] = extractTime(
-                current.publishedAt ?? new Date()
+                current.publishedAt ?? /* @__PURE__ */ new Date()
               );
               let yearItem = previous.find(
                 (item2) => item2.year === year && !item2.month
@@ -954,9 +979,11 @@ var lists = {
         authors: (0, import_fields2.relationship)({
           access: {
             create: ({ session: session2, inputData }) => hasRole(session2, "ADMIN") || !inputData.authors?.create && maybeArray(inputData.authors?.connect ?? []).some(
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
               (item) => item.id === session2.data.id
             ),
             update: ({ session: session2, inputData }) => hasRole(session2, "ADMIN") || !inputData.authors?.create && !inputData.authors?.set && !maybeArray(inputData.authors?.disconnect ?? []).some(
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
               (item) => item.id === session2.data.id
             )
           },
@@ -1058,7 +1085,7 @@ var lists = {
           paths.push(
             ...posts.map(
               (post) => `/posts/${post.category?.slug ?? ""}/${extractTime(
-                post.publishedAt ?? new Date()
+                post.publishedAt ?? /* @__PURE__ */ new Date()
               ).join("/")}/${post.slug}`
             )
           );
@@ -1123,7 +1150,7 @@ var lists = {
           }
           const folders = posts.reduce((previous, current) => {
             const [year, month] = extractTime(
-              current.publishedAt ?? new Date()
+              current.publishedAt ?? /* @__PURE__ */ new Date()
             );
             let yearItem = previous.find(
               (item2) => item2.year === year && !item2.month
@@ -1170,7 +1197,7 @@ var lists = {
           paths.push(
             ...posts.map(
               (post) => `/posts/${post.category?.slug ?? ""}/${extractTime(
-                post.publishedAt ?? new Date()
+                post.publishedAt ?? /* @__PURE__ */ new Date()
               ).join("/")}/${post.slug}`
             )
           );
@@ -1235,6 +1262,7 @@ var keystone_default = withAuth(
       provider,
       url,
       enableLogging: process.env.NODE_ENV !== "production",
+      // TODO: set to `true` on first release
       useMigrations: false
     },
     lists,
