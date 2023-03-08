@@ -200,7 +200,6 @@ async function imageHead(url2) {
     method: "HEAD",
     referrer: ""
   });
-  debugger;
   return Boolean(
     response.ok && response.headers.get("content-type")?.startsWith("image/")
   );
