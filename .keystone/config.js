@@ -158,6 +158,10 @@ var OEmbed = (() => {
       }
       const url2 = encodeURIComponent(this.getAttribute("url") ?? "");
       const response = await fetch(`/oembed-proxy?url=${url2}`);
+      if (!response.ok) {
+        contents.textContent = `Error ${response.status} on embedding ${this.getAttribute("url") ?? ""}`;
+        return;
+      }
       const data = await response.json();
       const event = new CustomEvent("data", { detail: data });
       this.dispatchEvent(event);
@@ -191,57 +195,71 @@ var oembed_default = OEmbed;
 
 // config/component-blocks.tsx
 oembed_default.register();
-function isImage(url2) {
-  try {
-    return /\.(?:gif|jpe?g|png|webp)$/.test(new URL(url2).pathname);
-  } catch {
-    return false;
-  }
+async function imageHead(url2) {
+  const response = await fetch(url2, {
+    method: "HEAD",
+    referrer: ""
+  });
+  debugger;
+  return Boolean(
+    response.ok && response.headers.get("content-type")?.startsWith("image/")
+  );
 }
 function Embed({ url: url2, alt, data }) {
   const element = (0, import_react.useRef)(null);
   const [image2, setImage] = (0, import_react.useState)(null);
+  const [isImage, setIsImage] = (0, import_react.useState)(false);
+  const [isLoading, setIsLoading] = (0, import_react.useState)(false);
   (0, import_react.useEffect)(() => {
     function onData(event) {
       data.onChange(JSON.stringify(event.detail));
     }
     setImage(null);
-    if (isImage(url2)) {
-      fetch(`/fetch-image?url=${url2}`, { method: "POST" }).then(async (response) => {
-        if (!response.ok) {
-          return;
-        }
-        const detail = await response.json();
-        setImage(
-          /* @__PURE__ */ import_react.default.createElement(
-            "img",
-            {
-              alt,
-              src: detail.src,
-              width: detail.width,
-              height: detail.height,
-              style: {
-                maxWidth: "100%",
-                height: "auto",
-                margin: "0 auto",
-                display: "block",
-                // eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
-                aspectRatio: `${detail.width} / ${detail.height}`
-              }
-            }
-          )
-        );
-        data.onChange(JSON.stringify({ ...detail, type: "uploaded-image" }));
-      }).catch((error) => {
-        console.error(error);
+    setIsLoading(true);
+    async function changeImage() {
+      const imageResult = await imageHead(url2);
+      setIsImage(imageResult);
+      setIsLoading(false);
+      if (!imageResult) {
+        return;
+      }
+      const response = await fetch(`/fetch-image?url=${url2}`, {
+        method: "POST"
       });
+      if (!response.ok) {
+        return;
+      }
+      const detail = await response.json();
+      setImage(
+        /* @__PURE__ */ import_react.default.createElement(
+          "img",
+          {
+            alt,
+            src: detail.src,
+            width: detail.width,
+            height: detail.height,
+            style: {
+              maxWidth: "100%",
+              height: "auto",
+              margin: "0 auto",
+              display: "block",
+              // eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
+              aspectRatio: `${detail.width} / ${detail.height}`
+            }
+          }
+        )
+      );
+      data.onChange(JSON.stringify({ ...detail, type: "uploaded-image" }));
     }
+    changeImage().catch((error) => {
+      console.error(error);
+    });
     element.current?.addEventListener("data", onData);
     return () => {
       element.current?.removeEventListener("data", onData);
     };
   }, [url2]);
-  if (url2 === "") {
+  if (url2 === "" || isLoading) {
     return /* @__PURE__ */ import_react.default.createElement(
       "div",
       {
@@ -255,7 +273,7 @@ function Embed({ url: url2, alt, data }) {
       }
     );
   }
-  return isImage(url2) ? /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, image2 ?? /* @__PURE__ */ import_react.default.createElement(
+  return isImage ? /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, image2 ?? /* @__PURE__ */ import_react.default.createElement(
     "img",
     {
       src: url2,
@@ -1275,8 +1293,9 @@ var keystone_default = withAuth(
       }
     },
     server: {
-      extendExpressApp(app, context) {
+      extendExpressApp(app, commonContext) {
         app.post("/fetch-image", async (request, response) => {
+          const context = await commonContext.withRequest(request, response);
           if (!context.session) {
             response.status(403).send();
             return;
@@ -1315,6 +1334,7 @@ var keystone_default = withAuth(
           }
         });
         app.get("/oembed-proxy", async (request, response) => {
+          const context = await commonContext.withRequest(request, response);
           if (!context.session) {
             response.status(403).send();
             return;

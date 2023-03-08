@@ -25,17 +25,22 @@ type EmbedProps = {
   data: any;
 };
 
-function isImage(url: string) {
-  try {
-    return /\.(?:gif|jpe?g|png|webp)$/.test(new URL(url).pathname);
-  } catch {
-    return false;
-  }
+async function imageHead(url: string) {
+  const response = await fetch(url, {
+    method: 'HEAD',
+    referrer: '',
+  });
+
+  return Boolean(
+    response.ok && response.headers.get('content-type')?.startsWith('image/'),
+  );
 }
 
 function Embed({ url, alt, data }: EmbedProps) {
   const element = useRef<HTMLElement>(null);
   const [image, setImage] = useState<React.ReactNode>(null);
+  const [isImage, setIsImage] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     function onData(event: Event) {
@@ -44,42 +49,52 @@ function Embed({ url, alt, data }: EmbedProps) {
     }
 
     setImage(null);
+    setIsLoading(true);
 
-    if (isImage(url)) {
-      fetch(`/fetch-image?url=${url}`, { method: 'POST' })
-        .then(async response => {
-          if (!response.ok) {
-            return;
-          }
+    async function changeImage() {
+      const imageResult = await imageHead(url);
+      setIsImage(imageResult);
+      setIsLoading(false);
 
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          const detail = await response.json();
-          setImage(
-            <img
-              alt={alt}
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-              src={detail.src}
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-              width={detail.width}
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-              height={detail.height}
-              style={{
-                maxWidth: '100%',
-                height: 'auto',
-                margin: '0 auto',
-                display: 'block',
-                // eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
-                aspectRatio: `${detail.width} / ${detail.height}`,
-              }}
-            />,
-          );
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-          data.onChange(JSON.stringify({ ...detail, type: 'uploaded-image' }));
-        })
-        .catch(error => {
-          console.error(error);
-        });
+      if (!imageResult) {
+        return;
+      }
+
+      const response = await fetch(`/fetch-image?url=${url}`, {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        return;
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const detail = await response.json();
+      setImage(
+        <img
+          alt={alt}
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          src={detail.src}
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          width={detail.width}
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          height={detail.height}
+          style={{
+            maxWidth: '100%',
+            height: 'auto',
+            margin: '0 auto',
+            display: 'block',
+            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
+            aspectRatio: `${detail.width} / ${detail.height}`,
+          }}
+        />,
+      );
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+      data.onChange(JSON.stringify({ ...detail, type: 'uploaded-image' }));
     }
+
+    changeImage().catch(error => {
+      console.error(error);
+    });
 
     element.current?.addEventListener('data', onData);
 
@@ -88,7 +103,7 @@ function Embed({ url, alt, data }: EmbedProps) {
     };
   }, [url]);
 
-  if (url === '') {
+  if (url === '' || isLoading) {
     return (
       <div
         style={{
@@ -102,7 +117,7 @@ function Embed({ url, alt, data }: EmbedProps) {
     );
   }
 
-  return isImage(url) ? (
+  return isImage ? (
     <>
       {image ?? (
         <img

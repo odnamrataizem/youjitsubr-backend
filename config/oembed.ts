@@ -84,6 +84,14 @@ const OEmbed = (() => {
 
       const url = encodeURIComponent(this.getAttribute('url') ?? '');
       const response = await fetch(`/oembed-proxy?url=${url}`);
+
+      if (!response.ok) {
+        contents.textContent = `Error ${response.status} on embedding ${
+          this.getAttribute('url') ?? ''
+        }`;
+        return;
+      }
+
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const data = await response.json();
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment

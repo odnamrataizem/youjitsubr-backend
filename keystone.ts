@@ -42,8 +42,9 @@ export default withAuth(
       },
     },
     server: {
-      extendExpressApp(app, context) {
+      extendExpressApp(app, commonContext) {
         app.post('/fetch-image', async (request, response) => {
+          const context = await commonContext.withRequest(request, response);
           if (!context.session) {
             response.status(403).send();
             return;
@@ -89,6 +90,7 @@ export default withAuth(
         });
 
         app.get('/oembed-proxy', async (request, response) => {
+          const context = await commonContext.withRequest(request, response);
           if (!context.session) {
             response.status(403).send();
             return;
