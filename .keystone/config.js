@@ -1279,8 +1279,7 @@ var keystone_default = withAuth(
       provider,
       url,
       enableLogging: process.env.NODE_ENV !== "production",
-      // TODO: set to `true` on first release
-      useMigrations: false
+      useMigrations: true
     },
     lists,
     session,
