@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "keystone dev",
+    "build": "keystone build && keystone prisma migrate deploy",
     "prod": "keystone build && keystone start --with-migrations",
+    "start": "keystone start",
     "postinstall": "keystone postinstall"
   },
   "dependencies": {
