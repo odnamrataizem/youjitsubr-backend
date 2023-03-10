@@ -17,7 +17,7 @@ const { withAuth } = createAuth({
     process.env.NODE_ENV === 'production'
       ? undefined
       : {
-          fields: ['name', 'email', 'password'],
+          fields: ['name', 'email', 'description', 'password'],
           itemData: { roles: ['SUPER'] },
         },
 });

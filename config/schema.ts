@@ -114,10 +114,7 @@ export const lists: Lists = {
           context,
           addValidationError,
         }) {
-          if (
-            (operation === 'create' && !resolvedData.picture.id) ||
-            (operation === 'update' && resolvedData.picture.id === null)
-          ) {
+          if (operation === 'update' && resolvedData.picture.id === null) {
             addValidationError('Missing required field: picture');
           }
 
@@ -405,9 +402,8 @@ export const lists: Lists = {
                   },
                 },
               });
-            // @ts-expect-error - TS bug?
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            const currentCount = query?._count?.[field] || 0;
+
+            const currentCount = query?._count?.[field] ?? 0;
             // @ts-expect-error - TS bug?
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
             const deletedCount = resolvedData?.[field]?.disconnect?.length || 0;

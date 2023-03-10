@@ -57,7 +57,7 @@ var { withAuth } = (0, import_auth.createAuth)({
   sessionData: "id active roles",
   secretField: "password",
   initFirstItem: process.env.NODE_ENV === "production" ? void 0 : {
-    fields: ["name", "email", "password"],
+    fields: ["name", "email", "description", "password"],
     itemData: { roles: ["SUPER"] }
   }
 });
@@ -563,7 +563,7 @@ var lists = {
           context,
           addValidationError
         }) {
-          if (operation === "create" && !resolvedData.picture.id || operation === "update" && resolvedData.picture.id === null) {
+          if (operation === "update" && resolvedData.picture.id === null) {
             addValidationError("Missing required field: picture");
           }
           if (!resolvedData.roles?.length && (operation === "create" || operation === "update" && resolvedData.roles !== void 0)) {
