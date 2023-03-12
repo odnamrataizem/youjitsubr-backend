@@ -690,7 +690,8 @@ export const lists: Lists = {
         }),
         sticky: checkbox({
           ui: {
-            description: 'If checked, this post will be displayed at the top.',
+            description:
+              'If checked, this post will be displayed before other posts.',
           },
         }),
       },
