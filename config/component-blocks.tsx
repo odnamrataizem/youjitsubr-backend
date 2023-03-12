@@ -26,14 +26,19 @@ type EmbedProps = {
 };
 
 async function imageHead(url: string) {
-  const response = await fetch(url, {
-    method: 'HEAD',
-    referrer: '',
-  });
+  try {
+    const response = await fetch(url, {
+      method: 'HEAD',
+      referrer: '',
+    });
 
-  return Boolean(
-    response.ok && response.headers.get('content-type')?.startsWith('image/'),
-  );
+    return Boolean(
+      response.ok && response.headers.get('content-type')?.startsWith('image/'),
+    );
+  } catch (error: unknown) {
+    console.error(error);
+    return false;
+  }
 }
 
 function Embed({ url, alt, data }: EmbedProps) {
