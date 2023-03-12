@@ -123,7 +123,7 @@ var OEmbed = (() => {
       iframe.style.aspectRatio = "16 / 9";
       iframe.style.border = "0";
       iframe.style.verticalAlign = "top";
-      iframe.srcdoc = `<!DOCTYPE html><html class="${this.#isDark ? "dark" : ""}" lang="pt-BR"><style>html{font-size:125%;color:#000}html.dark{color:#fff}body{margin:0;padding:0;display:flex;flex-direction:column;align-items:center}iframe,img{max-width:100%}.filler{width:100%;aspect-ratio:16 / 9;display:flex;justify-content:center;align-items:center}</style><body><div class="filler">...</div></body></html>`;
+      iframe.srcdoc = `<!DOCTYPE html><html class="${this.#isDark ? "dark" : ""}" lang="pt-BR"><style>html{font-size:125%;color:#000}html.dark{color:#fff}body{margin:0;padding:0;display:flex;flex-direction:column;align-items:center}iframe,img{max-width:100%}.filler{box-sizing:border-box;width:100%;aspect-ratio:16 / 9;display:flex;justify-content:center;align-items:center;border:5px dashed;opacity:0.25;border-radius:5px}</style><body><div class="filler">...</div></body></html>`;
       this.#root.append(iframe);
       setTimeout(() => {
         const callback = () => {
@@ -157,13 +157,17 @@ var OEmbed = (() => {
         return;
       }
       const url2 = encodeURIComponent(this.getAttribute("url") ?? "");
-      const response = await fetch(`/oembed-proxy?url=${url2}`);
-      if (!response.ok) {
-        contents.textContent = `Error ${response.status} on embedding ${this.getAttribute("url") ?? ""}`;
-        return;
+      let data = { html: '<div class="filler">...</div>' };
+      if (url2) {
+        const response = await fetch(`/oembed-proxy?url=${url2}`);
+        if (!response.ok) {
+          contents.textContent = `Error ${response.status} on embedding ${this.getAttribute("url") ?? ""}`;
+          return;
+        }
+        data = await response.json();
       }
-      const data = await response.json();
       const event = new CustomEvent("data", { detail: data });
+      console.log("dispatch", data);
       this.dispatchEvent(event);
       contents.innerHTML = data.html;
       if (data.type === "video") {
@@ -196,83 +200,81 @@ var oembed_default = OEmbed;
 // config/component-blocks.tsx
 oembed_default.register();
 async function imageHead(url2) {
-  const response = await fetch(url2, {
-    method: "HEAD",
-    referrer: ""
-  });
-  return Boolean(
-    response.ok && response.headers.get("content-type")?.startsWith("image/")
-  );
+  try {
+    const response = await fetch(url2, {
+      method: "HEAD",
+      referrer: ""
+    });
+    return Boolean(
+      response.ok && response.headers.get("content-type")?.startsWith("image/")
+    );
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
 }
 function Embed({ url: url2, alt, data }) {
   const element = (0, import_react.useRef)(null);
   const [image2, setImage] = (0, import_react.useState)(null);
   const [isImage, setIsImage] = (0, import_react.useState)(false);
   const [isLoading, setIsLoading] = (0, import_react.useState)(false);
-  (0, import_react.useEffect)(() => {
-    function onData(event) {
+  const onData = (0, import_react.useCallback)(
+    (event) => {
+      console.log("received", event.detail);
       data.onChange(JSON.stringify(event.detail));
-    }
-    setImage(null);
+    },
+    [data]
+  );
+  const changeImage = (0, import_react.useCallback)(async () => {
     setIsLoading(true);
-    async function changeImage() {
-      const imageResult = await imageHead(url2);
-      setIsImage(imageResult);
-      setIsLoading(false);
-      if (!imageResult) {
-        return;
-      }
-      const response = await fetch(`/fetch-image?url=${url2}`, {
-        method: "POST"
-      });
-      if (!response.ok) {
-        return;
-      }
-      const detail = await response.json();
-      setImage(
-        /* @__PURE__ */ import_react.default.createElement(
-          "img",
-          {
-            alt,
-            src: detail.src,
-            width: detail.width,
-            height: detail.height,
-            style: {
-              maxWidth: "100%",
-              height: "auto",
-              margin: "0 auto",
-              display: "block",
-              // eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
-              aspectRatio: `${detail.width} / ${detail.height}`
-            }
-          }
-        )
-      );
-      data.onChange(JSON.stringify({ ...detail, type: "uploaded-image" }));
+    const imageResult = await imageHead(url2);
+    setIsImage(imageResult);
+    setIsLoading(false);
+    if (!imageResult) {
+      return;
     }
-    changeImage().catch((error) => {
-      console.error(error);
+    const response = await fetch(`/fetch-image?url=${url2}`, {
+      method: "POST"
     });
+    if (!response.ok) {
+      return;
+    }
+    const detail = await response.json();
+    setImage(
+      /* @__PURE__ */ import_react.default.createElement(
+        "img",
+        {
+          alt,
+          src: detail.src,
+          width: detail.width,
+          height: detail.height,
+          style: {
+            maxWidth: "100%",
+            height: "auto",
+            margin: "0 auto",
+            display: "block",
+            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
+            aspectRatio: `${detail.width} / ${detail.height}`
+          }
+        }
+      )
+    );
+    data.onChange(JSON.stringify({ ...detail, type: "uploaded-image" }));
+  }, [alt, data]);
+  (0, import_react.useEffect)(() => {
+    setImage(null);
+    if (url2 !== "") {
+      changeImage().catch((error) => {
+        console.error(error);
+      });
+    }
+    console.log(element.current);
     element.current?.addEventListener("data", onData);
     return () => {
       element.current?.removeEventListener("data", onData);
     };
   }, [url2]);
-  if (url2 === "" || isLoading) {
-    return /* @__PURE__ */ import_react.default.createElement(
-      "div",
-      {
-        style: {
-          aspectRatio: "16 / 9",
-          width: "100%",
-          border: "5px dashed",
-          opacity: "0.25",
-          borderRadius: "5px"
-        }
-      }
-    );
-  }
-  return isImage ? /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, image2 ?? /* @__PURE__ */ import_react.default.createElement(
+  return isImage && !isLoading ? /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, image2 ?? /* @__PURE__ */ import_react.default.createElement(
     "img",
     {
       src: url2,
@@ -812,7 +814,7 @@ var lists = {
                 }
               })
             );
-            const currentCount = query?._count?.[field] || 0;
+            const currentCount = query?._count?.[field] ?? 0;
             const deletedCount = resolvedData?.[field]?.disconnect?.length || 0;
             if (currentCount && currentCount === deletedCount) {
               addValidationError(`Missing required relationship: ${field}`);
@@ -1049,7 +1051,7 @@ var lists = {
         }),
         sticky: (0, import_fields2.checkbox)({
           ui: {
-            description: "If checked, this post will be displayed at the top."
+            description: "If checked, this post will be displayed before other posts."
           }
         })
       }

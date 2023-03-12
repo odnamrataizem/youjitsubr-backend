@@ -39,7 +39,7 @@ const OEmbed = (() => {
       iframe.style.verticalAlign = 'top';
       iframe.srcdoc = `<!DOCTYPE html><html class="${
         this.#isDark ? 'dark' : ''
-      }" lang="pt-BR"><style>html{font-size:125%;color:#000}html.dark{color:#fff}body{margin:0;padding:0;display:flex;flex-direction:column;align-items:center}iframe,img{max-width:100%}.filler{width:100%;aspect-ratio:16 / 9;display:flex;justify-content:center;align-items:center}</style><body><div class="filler">...</div></body></html>`;
+      }" lang="pt-BR"><style>html{font-size:125%;color:#000}html.dark{color:#fff}body{margin:0;padding:0;display:flex;flex-direction:column;align-items:center}iframe,img{max-width:100%}.filler{box-sizing:border-box;width:100%;aspect-ratio:16 / 9;display:flex;justify-content:center;align-items:center;border:5px dashed;opacity:0.25;border-radius:5px}</style><body><div class="filler">...</div></body></html>`;
       this.#root.append(iframe);
 
       setTimeout(() => {
@@ -83,19 +83,25 @@ const OEmbed = (() => {
       }
 
       const url = encodeURIComponent(this.getAttribute('url') ?? '');
-      const response = await fetch(`/oembed-proxy?url=${url}`);
+      let data: any = { html: '<div class="filler">...</div>' };
 
-      if (!response.ok) {
-        contents.textContent = `Error ${response.status} on embedding ${
-          this.getAttribute('url') ?? ''
-        }`;
-        return;
+      if (url) {
+        const response = await fetch(`/oembed-proxy?url=${url}`);
+
+        if (!response.ok) {
+          contents.textContent = `Error ${response.status} on embedding ${
+            this.getAttribute('url') ?? ''
+          }`;
+          return;
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        data = await response.json();
       }
 
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const data = await response.json();
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const event = new CustomEvent('data', { detail: data });
+      console.log('dispatch', data);
       this.dispatchEvent(event);
 
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access

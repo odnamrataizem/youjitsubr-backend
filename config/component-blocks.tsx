@@ -12,7 +12,7 @@ import { ImageIcon } from '@keystone-ui/icons/icons/ImageIcon';
 import { Trash2Icon } from '@keystone-ui/icons/icons/Trash2Icon';
 import { TypeIcon } from '@keystone-ui/icons/icons/TypeIcon';
 import { Tooltip } from '@keystone-ui/tooltip';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import OEmbed from './oembed';
 
@@ -47,60 +47,67 @@ function Embed({ url, alt, data }: EmbedProps) {
   const [isImage, setIsImage] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    function onData(event: Event) {
+  const onData = useCallback(
+    (event: Event) => {
+      console.log('received', (event as CustomEvent).detail);
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
       data.onChange(JSON.stringify((event as CustomEvent).detail));
-    }
+    },
+    [data],
+  );
 
-    setImage(null);
+  const changeImage = useCallback(async () => {
     setIsLoading(true);
+    const imageResult = await imageHead(url);
+    setIsImage(imageResult);
+    setIsLoading(false);
 
-    async function changeImage() {
-      const imageResult = await imageHead(url);
-      setIsImage(imageResult);
-      setIsLoading(false);
-
-      if (!imageResult) {
-        return;
-      }
-
-      const response = await fetch(`/fetch-image?url=${url}`, {
-        method: 'POST',
-      });
-      if (!response.ok) {
-        return;
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const detail = await response.json();
-      setImage(
-        <img
-          alt={alt}
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-          src={detail.src}
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-          width={detail.width}
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-          height={detail.height}
-          style={{
-            maxWidth: '100%',
-            height: 'auto',
-            margin: '0 auto',
-            display: 'block',
-            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
-            aspectRatio: `${detail.width} / ${detail.height}`,
-          }}
-        />,
-      );
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-      data.onChange(JSON.stringify({ ...detail, type: 'uploaded-image' }));
+    if (!imageResult) {
+      return;
     }
 
-    changeImage().catch(error => {
-      console.error(error);
+    const response = await fetch(`/fetch-image?url=${url}`, {
+      method: 'POST',
     });
+    if (!response.ok) {
+      return;
+    }
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const detail = await response.json();
+    setImage(
+      <img
+        alt={alt}
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        src={detail.src}
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        width={detail.width}
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        height={detail.height}
+        style={{
+          maxWidth: '100%',
+          height: 'auto',
+          margin: '0 auto',
+          display: 'block',
+          // eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
+          aspectRatio: `${detail.width} / ${detail.height}`,
+        }}
+      />,
+    );
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+    data.onChange(JSON.stringify({ ...detail, type: 'uploaded-image' }));
+  }, [alt, data]);
+
+  useEffect(() => {
+    setImage(null);
+
+    if (url !== '') {
+      changeImage().catch(error => {
+        console.error(error);
+      });
+    }
+
+    console.log(element.current);
     element.current?.addEventListener('data', onData);
 
     return () => {
@@ -108,21 +115,7 @@ function Embed({ url, alt, data }: EmbedProps) {
     };
   }, [url]);
 
-  if (url === '' || isLoading) {
-    return (
-      <div
-        style={{
-          aspectRatio: '16 / 9',
-          width: '100%',
-          border: '5px dashed',
-          opacity: '0.25',
-          borderRadius: '5px',
-        }}
-      />
-    );
-  }
-
-  return isImage ? (
+  return isImage && !isLoading ? (
     <>
       {image ?? (
         <img
