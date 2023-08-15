@@ -12,7 +12,7 @@
   "dependencies": {
     "@extractus/oembed-extractor": "^3.1.8",
     "@keystone-6/auth": "^7.0.0",
-    "@keystone-6/core": "^5.1.0",
+    "@keystone-6/core": "^5.5.1",
     "@keystone-6/fields-document": "^7.0.0",
     "dotenv": "^16.0.3",
     "lodash.range": "^3.2.0",
